@@ -1,7 +1,8 @@
-import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { AuthService, LoginRequest } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -20,55 +21,20 @@ export class Login implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
-    this.seedDefaultAccounts();
     this.clearPreviousSession();
   }
 
   private clearPreviousSession(): void {
     sessionStorage.removeItem('currentUser');
-  }
-
-  private seedDefaultAccounts(): void {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-
-    const defaultAdmin = {
-      id: 1,
-      name: 'Admin',
-      email: 'admin@bank.com',
-      password: '123456',
-      role: 'admin'
-    };
-
-    const secondAdmin = {
-      id: 3,
-      name: 'Admin1',
-      email: 'admin@banque.tn',
-      password: '123456',
-      role: 'admin'
-    };
-
-    const defaultUser = {
-      id: 2,
-      name: 'User',
-      email: 'user@bank.com',
-      password: '1234567',
-      role: 'user'
-    };
-
-    const cleanedUsers = users.filter(
-      (u: any) =>
-        u.email !== defaultAdmin.email &&
-        u.email !== defaultUser.email &&
-        u.email !== secondAdmin.email
-    );
-
-    cleanedUsers.push(defaultAdmin, defaultUser, secondAdmin);
-
-    localStorage.setItem('users', JSON.stringify(cleanedUsers));
+    localStorage.removeItem('currentUser');
   }
 
   togglePassword(): void {
@@ -85,44 +51,44 @@ export class Login implements OnInit {
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-
-    const foundUser = users.find(
-      (u: any) =>
-        u.email.toLowerCase() === this.email.trim().toLowerCase() &&
-        u.password === this.password
-    );
-
-    if (!foundUser) {
-      this.error = 'Email ou mot de passe incorrect';
-      return;
-    }
-
-    const currentUser = {
-      id: foundUser.id,
-      name: foundUser.name,
-      email: foundUser.email,
-      role: foundUser.role
+    const request: LoginRequest = {
+      email: this.email.trim(),
+      password: this.password
     };
 
-    if (this.rememberMe) {
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      sessionStorage.removeItem('currentUser');
-    } else {
-      sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-      localStorage.removeItem('currentUser');
-    }
 
-    if (foundUser.role === 'admin') {
-      this.router.navigate(['/dashboard']);
-      return;
-    }
+    this.authService.login(request).subscribe({
+      next: (res) => {
+        console.log('reeeeeeeeeeeeeeeeeesultat',res);
+        const currentUser = {
+          name: res.name,
+          email: this.email.trim(),
+          token: res.access_token,
+          refreshToken: res.refresh_token,
+          tokenType: res.token_type,
+          role: res.role
+        };
 
-    if (foundUser.role === 'user') {
-      this.router.navigate(['/user-dashboard']);
-      return;
-    }
+        if (this.rememberMe) {
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          sessionStorage.removeItem('currentUser');
+        } else {
+          sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+          localStorage.removeItem('currentUser');
+        }
 
-    this.error = 'Rôle utilisateur invalide';
+        // Navigate based on role
+        const targetRoute = res.role === 'ADMIN' ? '/dashboard' : '/user-dashboard';
+        this.router.navigate([targetRoute]);
+      },
+      error: (err) => {
+        const message =
+          err?.status === 400 && err.error?.message
+            ? err.error.message
+            : 'Mail ou mot de passe incorrect';
+        this.error = message;
+        this.cdr.markForCheck();
+      }
+    });
   }
 }

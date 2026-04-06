@@ -1,7 +1,8 @@
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, PLATFORM_ID, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { AuthService, RegistrationRequest } from '../../services/auth.service';
 
 @Component({
   selector: 'app-register',
@@ -23,7 +24,11 @@ export class Register {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   togglePassword(): void {
     this.showPassword = !this.showPassword;
@@ -59,30 +64,34 @@ export class Register {
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-
-    const exists = users.some((u: any) => u.email === this.email.trim());
-
-    if (exists) {
-      this.error = 'Ce compte existe déjà';
-      return;
-    }
-
-    const newUser = {
-      id: Date.now(),
+    const request: RegistrationRequest = {
       name: this.name.trim(),
       email: this.email.trim(),
       password: this.password,
-      role: 'user'
+      roleType: 'USER'
     };
 
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
+    this.authService.register(request).subscribe({
+      next: () => {
+        this.success = 'Compte créé avec succès';
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 1000);
+      },
+      error: (err) => {
+        const apiMessage =
+          typeof err?.error === 'string' ? err.error : err?.error?.message;
 
-    this.success = 'Compte créé avec succès';
-
-    setTimeout(() => {
-      this.router.navigate(['/login']);
-    }, 1000);
+        if (err?.status === 400 && apiMessage) {
+          this.error = apiMessage;
+        } else if (err?.status === 409) {
+          this.error = apiMessage || 'Ce compte existe déjà';
+        } else {
+          this.error = 'Erreur serveur';
+        }
+        this.cdr.markForCheck();
+      }
+    });
   }
 }
