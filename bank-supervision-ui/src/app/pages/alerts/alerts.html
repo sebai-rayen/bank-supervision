@@ -1,0 +1,415 @@
+<div class="app">
+  <div class="shell">
+
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="/assets/logobank.png" alt="Logo" class="brand-main-logo" />
+      </div>
+
+      <div class="section-title">Menu</div>
+
+      <nav class="navlist">
+        <a
+          class="navpill"
+          routerLink="/dashboard"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }">
+          <span class="navicon">
+            <img src="/assets/Dashbard.png" class="navimg" alt="Dashboard" />
+          </span>
+          <span>Tableau de bord</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/servers"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/serveur-.png" class="navimg" alt="Servers" />
+          </span>
+          <span>Serveurs</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/application"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/application.png" class="navimg" alt="Application" />
+          </span>
+          <span>Application</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/alerts"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/Alert.png" class="navimg" alt="Alerts" />
+          </span>
+          <span>Alertes</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/users"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/user.png" class="navimg" alt="Users" />
+          </span>
+          <span>Utilisateurs</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/settings"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/settings.png" class="navimg" alt="Settings" />
+          </span>
+          <span>Paramètres</span>
+        </a>
+      </nav>
+
+      <hr class="divider" />
+
+      <a class="logout" routerLink="/login">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Se déconnecter</span>
+      </a>
+    </aside>
+
+    <main class="main">
+
+      <div class="topbar">
+        <div class="top-left">
+          <div class="top-title">Alerts</div>
+          <div class="top-sub">Received emails + send notification</div>
+        </div>
+
+        <div class="top-search">
+          <i class="bi bi-search"></i>
+          <input type="text" placeholder="Search servers, alerts..." />
+        </div>
+
+        <div class="top-user">
+          <div class="top-avatar">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <div>
+            <div class="top-username">Admin</div>
+            <div class="top-status">
+              <span class="top-dot"></span>
+              Connected
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <div class="tabs-bar">
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="activeTab === 'received'"
+            (click)="setTab('received')">
+            <i class="bi bi-inbox-fill"></i>
+            Received
+          </button>
+
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="activeTab === 'send'"
+            (click)="setTab('send')">
+            <i class="bi bi-send-fill"></i>
+            Send Alert
+          </button>
+        </div>
+
+        <ng-container *ngIf="activeTab === 'received'">
+
+          <section class="panel incoming">
+            <div class="incoming-head">
+              <div class="incoming-left">
+                <div class="incoming-title">
+                  <span class="bell">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="bell-dot"></span>
+                  </span>
+                  <span>Incoming Email Alert</span>
+                  <span class="tag-new">NEW</span>
+                </div>
+                <div class="incoming-sub">Last alert received via email</div>
+              </div>
+
+              <button class="btn-reset-solid" type="button" (click)="resetIncoming()">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                Reset
+              </button>
+            </div>
+
+            <div class="incoming-grid">
+              <div class="incoming-item">
+                <div class="incoming-label">Server</div>
+                <div class="incoming-value">{{ incoming.server }}</div>
+              </div>
+
+              <div class="incoming-item">
+                <div class="incoming-label">Subject</div>
+                <div class="incoming-value">{{ incoming.subject }}</div>
+              </div>
+
+              <div class="incoming-item incoming-item-wide">
+                <div class="incoming-label">Message</div>
+                <div class="incoming-value">{{ incoming.message }}</div>
+              </div>
+
+              <div class="incoming-item incoming-item-time">
+                <div class="incoming-label">Time</div>
+                <div class="incoming-value">{{ incoming.time }}</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel pro-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Recent Alerts</div>
+                <div class="panel-sub">Latest incidents detected by system</div>
+              </div>
+
+              <div class="panel-actions">
+                <button class="btn-solid-secondary" type="button" (click)="markAllRead()">
+                  <i class="bi bi-check2-circle"></i>
+                  Mark all read
+                </button>
+
+                <button class="btn-solid-export" type="button" (click)="exportReceivedAlerts()">
+                  <i class="bi bi-download"></i>
+                  Export
+                </button>
+
+                <button class="btn-solid-danger" type="button" (click)="clearAll()">
+                  <i class="bi bi-trash3"></i>
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div class="table-wrap pro-table-wrap">
+              <table class="table table-borderless align-middle m-0 table-custom pro-table">
+                <thead>
+                  <tr>
+                    <th style="width:240px;">Server</th>
+                    <th style="width:160px;">Type</th>
+                    <th style="width:180px;">Severity</th>
+                    <th>Email</th>
+                    <th style="width:110px;">Time</th>
+                    <th class="text-center" style="width:120px;">Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr *ngFor="let a of alerts; trackBy: trackById">
+                    <td>
+                      <div class="srv">
+                        <span class="srv-ico">
+                          <img src="/assets/serveur-.png" alt="Server" class="srv-asset-icon" />
+                        </span>
+
+                        <div class="srv-text srv-text-column">
+                          <div class="srv-name">{{ a.server }}</div>
+                          <div class="srv-subline">
+                            <span class="server-meta">Infrastructure node</span>
+                            <span *ngIf="a.isNew" class="tag-new small">NEW</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>
+                      <span class="type-pill">{{ a.type }}</span>
+                    </td>
+
+                    <td>
+                      <div
+                        class="sev sev-pill"
+                        [class.sev-pill-warn]="a.severity === 'Warning'"
+                        [class.sev-pill-bad]="a.severity === 'Critical'">
+                        <span
+                          class="pill-dot"
+                          [class.dot-warn]="a.severity === 'Warning'"
+                          [class.dot-bad]="a.severity === 'Critical'"></span>
+                        <span>{{ a.severity }}</span>
+                      </div>
+                    </td>
+
+                    <td class="email-cell">{{ a.email }}</td>
+
+                    <td>
+                      <span class="time-pill">{{ a.time }}</span>
+                    </td>
+
+                    <td class="text-center">
+                      <button
+                        class="ok-btn-pro"
+                        type="button"
+                        (click)="ack(a.id)"
+                        [class.ok-done]="a.read">
+                        ✓
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="alerts.length === 0">
+                    <td colspan="6" class="empty">No alerts</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+        </ng-container>
+
+        <ng-container *ngIf="activeTab === 'send'">
+
+          <div class="send-layout">
+
+            <section class="panel send-panel pro-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Send Alert to User</div>
+                  <div class="panel-sub">Fill in the alert details and choose the recipient</div>
+                </div>
+              </div>
+
+              <div class="send-form-grid">
+                <div class="form-group">
+                  <label>Server</label>
+                  <select [(ngModel)]="sendForm.server" name="server" class="form-control-ui">
+                    <option value="">Select server</option>
+                    <option *ngFor="let s of serverOptions" [value]="s">{{ s }}</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>User / Recipient</label>
+                  <select [(ngModel)]="sendForm.recipient" name="recipient" class="form-control-ui">
+                    <option value="">Select user</option>
+                    <option *ngFor="let u of userOptions" [value]="u">{{ u }}</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Type</label>
+                  <select [(ngModel)]="sendForm.type" name="type" class="form-control-ui">
+                    <option value="">Select type</option>
+                    <option value="CPU">CPU</option>
+                    <option value="RAM">RAM</option>
+                    <option value="Disk">Disk</option>
+                    <option value="Network">Network</option>
+                    <option value="Service">Service</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Severity</label>
+                  <select [(ngModel)]="sendForm.severity" name="severity" class="form-control-ui">
+                    <option value="">Select severity</option>
+                    <option value="Warning">Warning</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+
+                <div class="form-group full">
+                  <label>Subject</label>
+                  <input
+                    [(ngModel)]="sendForm.subject"
+                    name="subject"
+                    type="text"
+                    class="form-control-ui"
+                    placeholder="Enter alert subject" />
+                </div>
+
+                <div class="form-group full">
+                  <label>Message</label>
+                  <textarea
+                    [(ngModel)]="sendForm.message"
+                    name="message"
+                    rows="5"
+                    class="form-control-ui textarea-ui"
+                    placeholder="Write the alert message..."></textarea>
+                </div>
+              </div>
+
+              <div
+                class="form-feedback"
+                *ngIf="formMessage"
+                [class.error]="formError"
+                [class.success]="!formError">
+                {{ formMessage }}
+              </div>
+
+              <div class="send-actions">
+                <button class="btn-solid-secondary" type="button" (click)="resetSendForm()">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                  Reset
+                </button>
+
+                <button class="btn-solid-primary" type="button" (click)="sendAlert()">
+                  <i class="bi bi-send-fill"></i>
+                  Send Alert
+                </button>
+              </div>
+            </section>
+
+            <section class="panel history-panel pro-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Sent Alerts History</div>
+                  <div class="panel-sub">Latest alerts sent by admin to users</div>
+                </div>
+              </div>
+
+              <div class="history-list">
+                <div class="history-card" *ngFor="let item of sentAlerts; trackBy: trackBySentId">
+                  <div class="history-top">
+                    <div class="history-server">{{ item.server }}</div>
+                    <div class="history-time">{{ item.time }}</div>
+                  </div>
+
+                  <div class="history-middle">
+                    <span class="history-user">
+                      <i class="bi bi-person-fill"></i>
+                      {{ item.recipient }}
+                    </span>
+
+                    <span
+                      class="history-severity"
+                      [class.warn]="item.severity === 'Warning'"
+                      [class.critical]="item.severity === 'Critical'">
+                      {{ item.severity }}
+                    </span>
+                  </div>
+
+                  <div class="history-subject">{{ item.subject }}</div>
+                  <div class="history-message">{{ item.message }}</div>
+                </div>
+
+                <div class="empty-history" *ngIf="sentAlerts.length === 0">
+                  No sent alerts yet
+                </div>
+              </div>
+            </section>
+
+          </div>
+
+        </ng-container>
+
+      </div>
+    </main>
+
+  </div>
+</div>

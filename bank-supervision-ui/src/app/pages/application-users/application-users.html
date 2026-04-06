@@ -1,0 +1,351 @@
+<div class="app">
+  <div class="shell">
+
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="/assets/logobank.png" alt="Logo" class="brand-main-logo" />
+      </div>
+
+      <div class="section-title">Menu</div>
+
+      <nav class="navlist">
+        <a
+          class="navpill"
+          routerLink="/user-dashboard"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }">
+          <span class="navicon">
+            <img src="/assets/Dashbard.png" class="navimg" alt="Tableau de bord" />
+          </span>
+          <span>Tableau de bord</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/user-servers"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/serveur-.png" class="navimg" alt="Serveurs" />
+          </span>
+          <span>Serveurs</span>
+        </a>
+
+        <a
+          class="navpill active"
+          routerLink="/user-application"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/application.png" class="navimg" alt="Applications" />
+          </span>
+          <span>Applications</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/user-alerts"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/Alert.png" class="navimg" alt="Alertes" />
+          </span>
+          <span>Alertes</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/user-history"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }">
+          <span class="navicon">
+            <img src="assets/History.png" alt="Historique" class="navimg" />
+          </span>
+          <span>Historique</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/user-settings"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/settings.png" class="navimg" alt="Paramètres" />
+          </span>
+          <span>Paramètres</span>
+        </a>
+      </nav>
+
+      <hr class="divider" />
+
+      <a class="logout" href="javascript:void(0)" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Se déconnecter</span>
+      </a>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="top-left">
+          <div class="top-title">Applications</div>
+          <div class="top-sub">Vue détaillée des applications métiers et de leur état</div>
+        </div>
+
+        <div class="top-search">
+          <i class="bi bi-search"></i>
+          <input
+            type="text"
+            placeholder="Rechercher une application..."
+            [(ngModel)]="searchTerm" />
+        </div>
+
+        <div class="top-user" (click)="toggleProfileCard($event)">
+          <div class="top-avatar">
+            <img [src]="currentUser.image" alt="Profil" class="top-avatar-img" />
+          </div>
+
+          <div class="top-user-info">
+           <div class="top-username">Utilisateur</div>
+                <div class="top-status">
+                  <span class="top-dot"></span>
+                  Connecté
+                </div>
+              </div>
+            </div>
+
+        <div class="profile-card" *ngIf="showProfileCard" (click)="$event.stopPropagation()">
+          <div class="profile-header">
+            <div class="profile-avatar">
+              <img [src]="currentUser.image" alt="Profil" />
+            </div>
+
+            <div class="profile-main">
+              <div class="profile-name">{{ currentUser.fullName }}</div>
+              <div class="profile-role">{{ currentUser.role }}</div>
+            </div>
+          </div>
+
+          <div class="profile-info">
+            <div class="profile-item">
+              <span class="profile-label">Nom d'utilisateur</span>
+              <span class="profile-value">{{ currentUser.username }}</span>
+            </div>
+
+            <div class="profile-item">
+              <span class="profile-label">Email</span>
+              <span class="profile-value">{{ currentUser.email }}</span>
+            </div>
+
+            <div class="profile-item">
+              <span class="profile-label">Statut</span>
+              <span class="profile-value online">{{ currentUser.status }}</span>
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <a class="profile-btn settings-btn" routerLink="/user-settings" (click)="closeProfileCard($event)">
+              Paramètres
+            </a>
+
+            <button class="profile-btn logout-btn" type="button" (click)="logout($event)">
+              Déconnexion
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="stats-row">
+          <div class="stat stat-sidebar-tone" *ngFor="let item of resume">
+            <div>
+              <div class="label">{{ item.label }}</div>
+              <div class="value">{{ item.value }}</div>
+            </div>
+            <div class="mini-badge" [ngClass]="item.tone"></div>
+          </div>
+        </div>
+
+        <div class="application-layout">
+          <section class="panel left-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Liste des applications</div>
+                <div class="panel-sub">Sélectionnez une application pour consulter ses détails</div>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table table-borderless align-middle m-0 table-custom">
+                <thead>
+                  <tr>
+                    <th>Application</th>
+                    <th>Serveur</th>
+                    <th>Version</th>
+                    <th>Statut</th>
+                    <th class="text-end">Heure</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr
+                    *ngFor="let app of applicationsFiltrees"
+                    class="clickable-row"
+                    [class.active-row]="selectedApplication.id === app.id"
+                    (click)="selectApplication(app)">
+                    <td>
+                      <div class="app-cell">
+                        <div class="app-icon">
+                          <img src="/assets/application.png" alt="Application" />
+                        </div>
+                        <div>
+                          <div class="app-name">{{ app.nom }}</div>
+                          <div class="app-sub">{{ app.environnement }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="muted">{{ app.serveur }}</td>
+                    <td class="muted">{{ app.version }}</td>
+                    <td>
+                      <span class="status-pill" [ngClass]="statusClass(app.statut)">
+                        {{ app.statut }}
+                      </span>
+                    </td>
+                    <td class="text-end muted">{{ app.heure }}</td>
+                  </tr>
+
+                  <tr *ngIf="applicationsFiltrees.length === 0">
+                    <td colspan="5" class="empty-row">Aucune application trouvée</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel right-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Fiche application</div>
+                <div class="panel-sub">{{ selectedApplication.nom }}</div>
+              </div>
+            </div>
+
+            <div class="details-grid">
+              <div class="detail-card">
+                <span class="detail-label">Nom</span>
+                <span class="detail-value">{{ selectedApplication.nom }}</span>
+              </div>
+
+              <div class="detail-card">
+                <span class="detail-label">Serveur</span>
+                <span class="detail-value">{{ selectedApplication.serveur }}</span>
+              </div>
+
+              <div class="detail-card">
+                <span class="detail-label">Version</span>
+                <span class="detail-value">{{ selectedApplication.version }}</span>
+              </div>
+
+              <div class="detail-card">
+                <span class="detail-label">Environnement</span>
+                <span class="detail-value">{{ selectedApplication.environnement }}</span>
+              </div>
+
+              <div class="detail-card">
+                <span class="detail-label">Responsable</span>
+                <span class="detail-value">{{ selectedApplication.responsable }}</span>
+              </div>
+
+              <div class="detail-card">
+                <span class="detail-label">Utilisateurs actifs</span>
+                <span class="detail-value">{{ selectedApplication.utilisateurs }}</span>
+              </div>
+
+              <div class="detail-card wide">
+                <span class="detail-label">Statut</span>
+                <span class="status-pill large" [ngClass]="statusClass(selectedApplication.statut)">
+                  {{ selectedApplication.statut }}
+                </span>
+              </div>
+
+              <div class="detail-card wide">
+                <span class="detail-label">Description</span>
+                <span class="detail-value">{{ selectedApplication.description }}</span>
+              </div>
+            </div>
+
+            <div class="metrics-block">
+              <div class="metric-line">
+                <div class="metric-head">
+                  <span>Disponibilité</span>
+                  <strong>{{ selectedApplication.disponibilite }}%</strong>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill success" [style.width.%]="selectedApplication.disponibilite"></div>
+                </div>
+              </div>
+
+              <div class="metric-line">
+                <div class="metric-head">
+                  <span>Charge</span>
+                  <strong>{{ selectedApplication.charge }}%</strong>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill info" [style.width.%]="selectedApplication.charge"></div>
+                </div>
+              </div>
+
+              <div class="metric-line">
+                <div class="metric-head">
+                  <span>Latence</span>
+                  <strong>{{ selectedApplication.latence }} ms</strong>
+                </div>
+                <div class="progress-track">
+                  <div
+                    class="progress-fill warning"
+                    [style.width.%]="selectedApplication.latence > 300 ? 100 : selectedApplication.latence / 3">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <section class="sub-panel">
+              <div class="sub-panel-title">Technologies utilisées</div>
+              <div class="tags-row">
+                <span class="tech-tag" *ngFor="let tech of selectedApplication.technologie">
+                  {{ tech }}
+                </span>
+              </div>
+            </section>
+
+            <section class="sub-panel">
+              <div class="sub-panel-title">Indicateurs clés</div>
+              <div class="key-figures">
+                <div class="mini-card">
+                  <span class="mini-label">Incidents</span>
+                  <strong>{{ selectedApplication.incidents }}</strong>
+                </div>
+                <div class="mini-card">
+                  <span class="mini-label">Dernier déploiement</span>
+                  <strong>{{ selectedApplication.dernierDeploiement }}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="sub-panel ai-panel">
+              <div class="sub-panel-title ai-head">
+                <span>Analyse IA</span>
+                <span class="ai-badge" [ngClass]="aiSeverityClass">Assistant IA</span>
+              </div>
+
+              <div class="ai-box">
+                <div class="ai-title">{{ aiTitle }}</div>
+                <p class="ai-text">{{ aiMessage }}</p>
+
+                <div class="ai-list-title">Recommandations</div>
+                <ul class="ai-list">
+                  <li *ngFor="let item of aiRecommendations">{{ item }}</li>
+                </ul>
+              </div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
