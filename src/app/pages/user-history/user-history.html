@@ -1,0 +1,239 @@
+<div class="app">
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="assets/logobank.png" alt="Logo" class="brand-main-logo" />
+      </div>
+
+      <div class="section-title">Menu utilisateur</div>
+
+      <nav class="navlist">
+        <a
+          class="navpill"
+          routerLink="/user-dashboard"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }">
+          <span class="navicon">
+            <img src="assets/Dashbard.png" alt="Tableau de bord" class="navimg" />
+          </span>
+          <span>Tableau de bord</span>
+        </a>
+
+        <a class="navpill" routerLink="/user-servers" routerLinkActive="active">
+          <span class="navicon">
+            <img src="assets/serveur-.png" alt="Serveurs" class="navimg" />
+          </span>
+          <span>Serveurs</span>
+        </a>
+        
+        <a class="navpill" routerLink="/user-application" routerLinkActive="active">
+          <span class="navicon">
+            <img src="assets/application.png" alt="Application" class="navimg" />
+          </span>
+          <span>Application</span>
+        </a>
+
+        <a class="navpill" routerLink="/user-alerts" routerLinkActive="active">
+          <span class="navicon">
+            <img src="assets/Alert.png" alt="Alertes" class="navimg" />
+          </span>
+          <span>Alertes</span>
+        </a>
+
+        
+
+        <a
+          class="navpill"
+          routerLink="/user-history"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }">
+          <span class="navicon">
+            <img src="assets/History.png" alt="Historique" class="navimg" />
+          </span>
+          <span>Historique</span>
+        </a>
+
+        <a class="navpill" routerLink="/user-settings" routerLinkActive="active">
+          <span class="navicon">
+            <img src="assets/settings.png" alt="Paramètres" class="navimg" />
+          </span>
+          <span>Paramètres</span>
+        </a>
+
+        
+      </nav>
+
+      <hr class="divider" />
+
+      <a class="logout" href="javascript:void(0)" (click)="logout()">
+        <span>Déconnexion</span>
+      </a>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="top-left">
+          <div class="top-title">Historique</div>
+          <div class="top-sub">Vue 7 jours des serveurs, applications et incidents critiques</div>
+        </div>
+
+        <div class="top-actions">
+          <div class="range-badge">7 derniers jours</div>
+
+          <button class="top-action-btn" type="button">
+            Export
+          </button>
+
+          <div class="top-user">
+            <div class="top-avatar">
+              <img src="assets/profil.png" alt="Profil" class="top-avatar-img" />
+            </div>
+
+            <div class="top-user-info">
+              <div class="top-username">{{ userName }}</div>
+              <div class="top-status">
+                <span class="top-dot"></span>
+                Connecté
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="summary-grid">
+          <div class="summary-card" *ngFor="let card of summaryCards">
+            <div>
+              <div class="summary-label">{{ card.label }}</div>
+              <div class="summary-value">{{ card.value }}</div>
+              <div class="summary-note">{{ card.note }}</div>
+            </div>
+            <div class="summary-icon" [ngClass]="card.tone"></div>
+          </div>
+        </div>
+
+        <div class="analytics-grid">
+          <section class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Performance serveur</div>
+                <div class="panel-sub">Charge CPU et RAM durant les 7 derniers jours</div>
+              </div>
+            </div>
+
+            <div class="chart-wrapper">
+              <div class="chart-scale">
+                <span>100</span>
+                <span>80</span>
+                <span>60</span>
+                <span>40</span>
+                <span>20</span>
+                <span>0</span>
+              </div>
+
+              <div class="chart-bars">
+                <div class="bar-column" *ngFor="let item of serverHistory">
+                  <div class="bar-group">
+                    <div
+                      class="bar cpu-bar"
+                      [style.height.%]="(item.cpu / maxLoadValue) * 100"
+                      [attr.data-value]="item.cpu">
+                    </div>
+
+                    <div
+                      class="bar ram-bar"
+                      [style.height.%]="(item.ram / maxLoadValue) * 100"
+                      [attr.data-value]="item.ram">
+                    </div>
+                  </div>
+
+                  <div class="bar-label">{{ item.day }}</div>
+                  <div class="bar-date">{{ item.date }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-legend">
+              <span><i class="legend-dot cpu"></i> CPU</span>
+              <span><i class="legend-dot ram"></i> RAM</span>
+            </div>
+          </section>
+
+          <div class="side-insights">
+            <section class="panel gauge-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Disponibilité globale</div>
+                  <div class="panel-sub">Moyenne application sur la semaine</div>
+                </div>
+              </div>
+
+              <div class="gauge-wrap">
+                <div class="gauge-ring" [style.background]="availabilityGauge">
+                  <div class="gauge-inner">
+                    <div class="gauge-value">{{ averageAvailability }}%</div>
+                    <div class="gauge-label">Disponibilité</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="gauge-stats">
+                <div class="gauge-stat-box">
+                  <span>Transactions</span>
+                  <strong>{{ applicationHistory[4].transactions }}</strong>
+                </div>
+                <div class="gauge-stat-box">
+                  <span>Users max</span>
+                  <strong>{{ applicationHistory[4].activeUsers }}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel incident-focus">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Incident sélectionné</div>
+                  <div class="panel-sub">{{ selectedIncident.server }} · {{ selectedIncident.service }}</div>
+                </div>
+              </div>
+
+              <div class="focus-status-row">
+                <span class="status-pill" [ngClass]="statusClass(selectedIncident.status)">
+                  {{ selectedIncident.status }}
+                </span>
+                <span class="focus-duration">{{ selectedIncident.duration }}</span>
+              </div>
+
+              <div class="focus-list">
+                <div class="focus-item">
+                  <span>Cause principale</span>
+                  <strong>{{ selectedIncident.rootCause }}</strong>
+                </div>
+
+                <div class="focus-item">
+                  <span>Date de chute</span>
+                  <strong>{{ selectedIncident.occurredAt }}</strong>
+                </div>
+
+                <div class="focus-item">
+                  <span>Retour service</span>
+                  <strong>{{ selectedIncident.recoveredAt }}</strong>
+                </div>
+
+                <div class="focus-item">
+                  <span>Impact</span>
+                  <strong>{{ selectedIncident.impact }}</strong>
+                </div>
+
+                <div class="focus-item">
+                  <span>Action prise</span>
+                  <strong>{{ selectedIncident.action }}</strong>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

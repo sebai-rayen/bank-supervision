@@ -1,0 +1,26 @@
+<div *ngIf="shouldShowWidget">
+  <div
+    class="chatbot-overlay"
+    *ngIf="showChatbot"
+    (click)="closeChatbot($event)">
+  </div>
+
+  <div
+    class="chatbot-panel"
+    [class.open]="showChatbot"
+    (click)="$event.stopPropagation()">
+    <app-chat-bot
+      [embedded]="true"
+      (closePanel)="closeChatbot()">
+    </app-chat-bot>
+  </div>
+
+  <button
+    type="button"
+    class="chatbot-float"
+    [class.active]="showChatbot"
+    (click)="toggleChatbot($event)"
+    title="Assistant IA">
+    <img src="/assets/IA.png" alt="Assistant IA" class="chatbot-float-img" />
+  </button>
+</div>

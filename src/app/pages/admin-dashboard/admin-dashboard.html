@@ -1,0 +1,317 @@
+<div class="app">
+  <div class="shell">
+
+   <aside class="sidebar">
+      <div class="brand">
+        <img src="/assets/logobank.png" alt="Logo" class="brand-main-logo" />
+      </div>
+
+      <div class="section-title">Menu</div>
+
+      <nav class="navlist">
+        <a
+          class="navpill"
+          routerLink="/dashboard"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }">
+          <span class="navicon">
+            <img src="/assets/Dashbard.png" class="navimg" alt="Dashboard" />
+          </span>
+          <span>Tableau de bord</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/servers"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/serveur-.png" class="navimg" alt="Servers" />
+          </span>
+          <span>Serveurs</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/application"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/application.png" class="navimg" alt="Application" />
+          </span>
+          <span>Application</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/alerts"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/Alert.png" class="navimg" alt="Alerts" />
+          </span>
+          <span>Alertes</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/users"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/user.png" class="navimg" alt="Users" />
+          </span>
+          <span>Utilisateurs</span>
+        </a>
+
+        <a
+          class="navpill"
+          routerLink="/settings"
+          routerLinkActive="active">
+          <span class="navicon">
+            <img src="/assets/settings.png" class="navimg" alt="Settings" />
+          </span>
+          <span>Paramètres</span>
+        </a>
+      </nav>
+
+      <hr class="divider" />
+
+      <a class="logout" routerLink="/login">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Se déconnecter</span>
+      </a>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="top-left">
+          <div class="top-title">Tableau de bord</div>
+          <div class="top-sub">Vue d’ensemble, activité récente</div>
+        </div>
+
+        
+        <div class="top-user">
+          <div class="top-avatar"></div>
+          <div>
+            <div class="top-username">Admin</div>
+            <div class="top-status">
+              <span class="top-dot"></span>
+              Connecté
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <!-- STATS CARDS TOP -->
+        <div class="stats-row">
+          <div class="stat stat-sidebar-tone">
+            <div>
+              <div class="label">TOTAL SERVEURS</div>
+              <div class="value">{{ stats.totalServers }}</div>
+            </div>
+            <div class="chip">
+              <img src="/assets/serveur-.png" alt="Servers" class="chip-icon" />
+            </div>
+          </div>
+
+          <div class="stat stat-sidebar-tone">
+            <div>
+              <div class="label">ACTIFS</div>
+              <div class="value text-good">{{ stats.active }}</div>
+            </div>
+            <div class="chip">
+              <span class="dot-good"></span>
+            </div>
+          </div>
+
+          <div class="stat stat-sidebar-tone">
+            <div>
+              <div class="label">AVERTISSEMENTS</div>
+              <div class="value text-warn">{{ stats.warnings }}</div>
+            </div>
+            <div class="chip">
+              <img src="/assets/Alert.png" alt="Warnings" class="chip-icon" />
+            </div>
+          </div>
+
+          <div class="stat stat-sidebar-tone">
+            <div>
+              <div class="label">CRITIQUES</div>
+              <div class="value text-bad">{{ stats.critical }}</div>
+            </div>
+            <div class="chip">
+              <img src="/assets/Dashbard.png" alt="Critical" class="chip-icon" />
+            </div>
+          </div>
+        </div>
+
+        <!-- CPU / RAM GAUGES UNDER STATS -->
+        <section class="gauges-row" id="server-stats">
+          <div class="gauge-panel">
+            <div class="gauge-panel-head">
+              <span class="gauge-panel-title">CPU</span>
+              <span class="selected-server-tag">{{ selectedServer.name }}</span>
+            </div>
+
+            <div class="gauge-box">
+              <svg viewBox="0 0 220 140" class="gauge-svg">
+                <defs>
+                  <linearGradient id="cpuGradientGauge" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#5b6cff"></stop>
+                    <stop offset="55%" stop-color="#d95cff"></stop>
+                    <stop offset="82%" stop-color="#4ee7b7"></stop>
+                    <stop offset="100%" stop-color="#3aa8ff"></stop>
+                  </linearGradient>
+                </defs>
+
+                <path class="gauge-track" d="M30 110 A80 80 0 0 1 190 110"></path>
+                <path
+                  class="gauge-progress"
+                  d="M30 110 A80 80 0 0 1 190 110"
+                  pathLength="100"
+                  stroke-dasharray="100"
+                  [attr.stroke-dashoffset]="100 - selectedServer.cpu"
+                  stroke="url(#cpuGradientGauge)">
+                </path>
+              </svg>
+
+              <div class="gauge-center">
+                <div class="gauge-value">{{ selectedServer.cpu }}%</div>
+                <div class="gauge-label">CPU</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="gauge-panel">
+            <div class="gauge-panel-head">
+              <span class="gauge-panel-title">RAM</span>
+              <span class="selected-server-tag">{{ selectedServer.name }}</span>
+            </div>
+
+            <div class="gauge-box">
+              <svg viewBox="0 0 220 140" class="gauge-svg">
+                <defs>
+                  <linearGradient id="ramGradientGauge" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#5b6cff"></stop>
+                    <stop offset="55%" stop-color="#d95cff"></stop>
+                    <stop offset="82%" stop-color="#4ee7b7"></stop>
+                    <stop offset="100%" stop-color="#3aa8ff"></stop>
+                  </linearGradient>
+                </defs>
+
+                <path class="gauge-track" d="M30 110 A80 80 0 0 1 190 110"></path>
+                <path
+                  class="gauge-progress"
+                  d="M30 110 A80 80 0 0 1 190 110"
+                  pathLength="100"
+                  stroke-dasharray="100"
+                  [attr.stroke-dashoffset]="100 - selectedServer.ram"
+                  stroke="url(#ramGradientGauge)">
+                </path>
+              </svg>
+
+              <div class="gauge-center">
+                <div class="gauge-value">{{ selectedServer.ram }}%</div>
+                <div class="gauge-label">RAM</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FULL WIDTH STACK -->
+        <div class="stack-sections">
+
+          <!-- ALERTES -->
+          <section class="panel full-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Alertes récentes</div>
+                <div class="panel-sub">Cliquez sur un serveur pour afficher ses statistiques CPU et RAM</div>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table table-borderless align-middle m-0 table-custom">
+                <thead>
+                  <tr>
+                    <th>Serveur</th>
+                    <th>Type</th>
+                    <th>Sévérité</th>
+                    <th class="text-end">Heure</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let r of rows"
+                      class="clickable-row"
+                      [class.active-row]="selectedServer.name === r.server"
+                      (click)="selectServer(r.server)">
+                    <td>
+                      <div class="srv">
+                        <img src="/assets/serveur-.png" class="row-icon" alt="Serveur" />
+                        <span class="fw-semibold">{{ r.server }}</span>
+                      </div>
+                    </td>
+                    <td class="muted">{{ r.type }}</td>
+                    <td>
+                      <div class="sev">
+                        <span class="pill-dot"
+                              [class.dot-warn]="r.severity === 'Warning'"
+                              [class.dot-bad]="r.severity === 'Critical'"></span>
+                        <span>{{ r.severity }}</span>
+                      </div>
+                    </td>
+                    <td class="text-end muted">{{ r.time }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- APPLICATION -->
+          <section class="panel full-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Application</div>
+                <div class="panel-sub">État récent des applications surveillées</div>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table table-borderless align-middle m-0 table-custom">
+                <thead>
+                  <tr>
+                    <th>Application</th>
+                    <th>Type</th>
+                    <th>Sévérité</th>
+                    <th class="text-end">Heure</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let app of applications">
+                    <td>
+                      <div class="srv">
+                        <img src="/assets/application.png" class="row-icon" alt="Application" />
+                        <span class="fw-semibold">{{ app.app }}</span>
+                      </div>
+                    </td>
+                    <td class="muted">{{ app.type }}</td>
+                    <td>
+                      <div class="sev">
+                        <span class="pill-dot"
+                              [class.dot-warn]="app.severity === 'Warning'"
+                              [class.dot-bad]="app.severity === 'Critical'"></span>
+                        <span>{{ app.severity }}</span>
+                      </div>
+                    </td>
+                    <td class="text-end muted">{{ app.time }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div>

@@ -1,0 +1,72 @@
+.register-bg {
+  min-height: 100vh;
+  background: url("../../../assets/bg.png") center/cover no-repeat;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.register-overlay {
+  min-height: 100vh;
+  background: linear-gradient(180deg, rgba(15, 45, 74, 0.72) 18%, rgba(255, 255, 255, 0.08) 100%);
+  opacity: 0.92;
+}
+
+.register-card {
+  width: 520px;
+  max-width: 92%;
+  background: rgba(90, 104, 119, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  z-index: 2;
+}
+
+.logo-img {
+  height: 48px;
+}
+
+.register-subtitle {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+}
+
+.form-control {
+  min-height: 54px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+}
+
+.form-control:focus {
+  box-shadow: none;
+  border-color: #163d69;
+}
+
+.eye-btn {
+  color: #1f2c38;
+  text-decoration: none !important;
+}
+
+.eye-btn:hover {
+  color: #0d1b2a;
+}
+
+.register-btn {
+  background: #162e55;
+  border: none;
+  color: #ffffff;
+  font-weight: 600;
+  min-height: 54px;
+}
+
+.register-btn:hover {
+  background: #1b3b6d;
+  color: #ffffff;
+}
+
+.login-link {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.login-link:hover {
+  color: #ffffff;
+}
