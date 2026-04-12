@@ -1,5 +1,6 @@
 package tn.isam.spring.bankSupervision.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -11,6 +12,7 @@ import java.util.List;
 public class Admin extends Personne {
 
 
+    @JsonIgnore
     @OneToMany(mappedBy = "admin", cascade = CascadeType.ALL)
     private List<Server> servers;
 

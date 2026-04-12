@@ -1,9 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { ServerService, ServerApi } from '../../services/server.service';
 
 interface ServerItem {
+  id?: number;
   name: string;
   ip: string;
   port: string;
@@ -12,6 +14,9 @@ interface ServerItem {
   lastCheck: string;
 }
 
+const DEFAULT_LAST_CHECK = '--:--';
+const DEFAULT_STATUS = 'Online';
+
 @Component({
   selector: 'app-servers',
   standalone: true,
@@ -19,7 +24,10 @@ interface ServerItem {
   templateUrl: './servers.html',
   styleUrls: ['./servers.css']
 })
-export class Servers {
+export class Servers implements OnInit {
+  private serverService = inject(ServerService);
+  private cdr = inject(ChangeDetectorRef);
+
   query = '';
   showAdd = false;
   showOs = false;
@@ -27,27 +35,60 @@ export class Servers {
   currentPage = 1;
   itemsPerPage = 6;
 
-  servers: ServerItem[] = [
-    { name: 'SRV-01', ip: '192.168.1.10', port: '22', os: 'Linux', status: 'Online', lastCheck: '10:00' },
-    { name: 'SRV-02', ip: '192.168.1.11', port: '80', os: 'Ubuntu', status: 'Warning', lastCheck: '09:20' },
-    { name: 'SRV-03', ip: '192.168.1.12', port: '22', os: 'Windows', status: 'Offline', lastCheck: '08:45' },
-    { name: 'SRV-04', ip: '192.168.1.13', port: '21', os: 'Debian', status: 'Maintenance', lastCheck: '11:10' },
-    { name: 'SRV-05', ip: '192.168.1.14', port: '22', os: 'Linux', status: 'Online', lastCheck: '12:00' },
-    { name: 'SRV-06', ip: '192.168.1.15', port: '443', os: 'Ubuntu', status: 'Warning', lastCheck: '12:15' },
-    { name: 'SRV-07', ip: '192.168.1.16', port: '22', os: 'CentOS', status: 'Online', lastCheck: '12:40' },
-    { name: 'SRV-08', ip: '192.168.1.17', port: '8080', os: 'Windows', status: 'Offline', lastCheck: '13:00' },
-    { name: 'SRV-09', ip: '192.168.1.18', port: '22', os: 'Linux', status: 'Online', lastCheck: '13:20' },
-    { name: 'SRV-10', ip: '192.168.1.19', port: '3306', os: 'Ubuntu', status: 'Warning', lastCheck: '13:45' }
-  ];
+  loading = false;
+  errorMessage = '';
 
-  form: ServerItem = {
-    name: '',
-    ip: '',
-    port: '',
-    os: '',
-    status: 'Online',
-    lastCheck: '--:--'
-  };
+  servers: ServerItem[] = [];
+
+  form: ServerItem = this.createEmptyForm();
+
+  ngOnInit(): void {
+    this.loadServers();
+  }
+
+  loadServers(): void {
+    this.loading = true;
+    this.errorMessage = '';
+
+    this.serverService.getServers().subscribe({
+      next: (data) => {
+        this.servers = data.map((server) => this.mapApiToUi(server));
+        this.currentPage = 1;
+        console.log(this.servers.length);
+        this.finishLoading();
+      },
+      error: (error) => {
+        console.error('Erreur chargement serveurs :', error);
+        this.errorMessage = 'Impossible de charger les serveurs.';
+        this.finishLoading();
+      }
+    });
+  }
+
+  mapApiToUi(server: ServerApi): ServerItem {
+    return {
+      id: server.id,
+      name: server.name ?? '-',
+      ip: server.ipAddress ?? '-',
+      port: server.port !== undefined && server.port !== null ? String(server.port) : '-',
+      os: server.os ?? server.system ?? '-',
+      status: server.status ?? DEFAULT_STATUS,
+      lastCheck: this.formatTime(server.lastCheck)
+    };
+  }
+
+  formatTime(dateValue?: string): string {
+    if (!dateValue) return DEFAULT_LAST_CHECK;
+
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      return DEFAULT_LAST_CHECK;
+    }
+
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
 
   get filteredServers(): ServerItem[] {
     const q = this.query.trim().toLowerCase();
@@ -57,12 +98,12 @@ export class Servers {
     }
 
     return this.servers.filter(server =>
-      server.name.toLowerCase().includes(q) ||
-      server.ip.toLowerCase().includes(q) ||
-      server.port.toLowerCase().includes(q) ||
-      server.os.toLowerCase().includes(q) ||
-      server.status.toLowerCase().includes(q) ||
-      server.lastCheck.toLowerCase().includes(q)
+      this.includesQuery(server.name, q) ||
+      this.includesQuery(server.ip, q) ||
+      this.includesQuery(server.port, q) ||
+      this.includesQuery(server.os, q) ||
+      this.includesQuery(server.status, q) ||
+      this.includesQuery(server.lastCheck, q)
     );
   }
 
@@ -101,6 +142,7 @@ export class Servers {
 
   openAddServer(): void {
     this.showAdd = true;
+    this.errorMessage = '';
   }
 
   closeAddServer(): void {
@@ -119,42 +161,36 @@ export class Servers {
   }
 
   addServer(): void {
-    if (
-      !this.form.name.trim() ||
-      !this.form.ip.trim() ||
-      !this.form.port.trim() ||
-      !this.form.os.trim()
-    ) {
+    this.errorMessage = '';
+
+    if (!this.isFormValid()) {
+      this.errorMessage = 'Remplis tous les champs.';
       return;
     }
 
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const mm = String(now.getMinutes()).padStart(2, '0');
-
-    const newServer: ServerItem = {
+    const payload: ServerApi = {
       name: this.form.name.trim(),
-      ip: this.form.ip.trim(),
-      port: this.form.port.trim(),
+      ipAddress: this.form.ip.trim(),
+      port: Number(this.form.port),
       os: this.form.os.trim(),
-      status: 'Online',
-      lastCheck: `${hh}:${mm}`
+      status: this.form.status || DEFAULT_STATUS
     };
 
-    this.servers = [newServer, ...this.servers];
-    this.currentPage = 1;
-    this.closeAddServer();
+    this.serverService.addServer(payload).subscribe({
+      next: () => {
+        this.loadServers();
+        this.closeAddServer();
+        this.resetForm();
+      },
+      error: (error) => {
+        console.error('Erreur ajout serveur :', error);
+        this.errorMessage = 'Impossible d\'ajouter le serveur.';
+      }
+    });
   }
 
   resetForm(): void {
-    this.form = {
-      name: '',
-      ip: '',
-      port: '',
-      os: '',
-      status: 'Online',
-      lastCheck: '--:--'
-    };
+    this.form = this.createEmptyForm();
   }
 
   getStatusClass(status: string): string {
@@ -163,8 +199,38 @@ export class Servers {
     if (value === 'online') return 'online';
     if (value === 'offline') return 'offline';
     if (value === 'warning') return 'warning';
+    if (value === 'critical') return 'critical';
     if (value === 'maintenance') return 'maintenance';
 
     return '';
+  }
+
+  private createEmptyForm(): ServerItem {
+    return {
+      name: '',
+      ip: '',
+      port: '',
+      os: '',
+      status: DEFAULT_STATUS,
+      lastCheck: DEFAULT_LAST_CHECK
+    };
+  }
+
+  private includesQuery(value: string, query: string): boolean {
+    return value.toLowerCase().includes(query);
+  }
+
+  private isFormValid(): boolean {
+    return Boolean(
+      this.form.name.trim() &&
+      this.form.ip.trim() &&
+      this.form.port.trim() &&
+      this.form.os.trim()
+    );
+  }
+
+  private finishLoading(): void {
+    this.loading = false;
+    this.cdr.detectChanges();
   }
 }

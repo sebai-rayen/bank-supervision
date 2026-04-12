@@ -1,33 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-
-interface DashboardStats {
-  totalServers: number;
-  active: number;
-  warnings: number;
-  critical: number;
-}
-
-interface AlertRow {
-  server: string;
-  type: string;
-  severity: 'Warning' | 'Critical';
-  time: string;
-}
-
-interface ApplicationRow {
-  app: string;
-  type: string;
-  severity: 'Warning' | 'Critical';
-  time: string;
-}
-
-interface ServerMetric {
-  name: string;
-  cpu: number;
-  ram: number;
-}
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import {
+  DashboardService,
+  DashboardResponse,
+  DashboardStats,
+  ServerRow,
+  ApplicationRow,
+  ServerMetric
+} from '../../services/dashboard.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -36,43 +19,191 @@ interface ServerMetric {
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
-export class AdminDashboard {
+export class AdminDashboard implements OnInit, OnDestroy {
+  private dashboardService = inject(DashboardService);
+  private cdr = inject(ChangeDetectorRef);
+
+  private nameRotateHandle?: ReturnType<typeof setInterval>;
+  private selectedIndex = 0;
+  private baseMetricLocked = false;
+  private serverWindowStart = 0;
+  private appWindowStart = 0;
+  private destroy$ = new Subject<void>();
+
   stats: DashboardStats = {
-    totalServers: 12,
-    active: 9,
-    warnings: 2,
-    critical: 1
+    totalServers: 0,
+    active: 0,
+    warnings: 0,
+    critical: 0
   };
 
-  rows: AlertRow[] = [
-    { server: 'SRV-01', type: 'CPU élevé', severity: 'Warning', time: '10:00' },
-    { server: 'SRV-02', type: 'RAM élevée', severity: 'Critical', time: '10:15' },
-    { server: 'SRV-03', type: 'Disque presque plein', severity: 'Warning', time: '10:25' },
-    { server: 'SRV-04', type: 'Service arrêté', severity: 'Critical', time: '10:40' },
-    { server: 'SRV-05', type: 'Température élevée', severity: 'Warning', time: '11:00' }
-  ];
+  rows: ServerRow[] = [];
+  applications: ApplicationRow[] = [];
+  serverMetrics: ServerMetric[] = [];
+  selectedServer: ServerMetric = { name: '-', cpu: 0, ram: 0 };
 
-  applications: ApplicationRow[] = [
-    { app: 'Core Banking', type: 'Latence', severity: 'Warning', time: '10:05' },
-    { app: 'API Gateway', type: 'Erreur 5xx', severity: 'Critical', time: '10:20' },
-    { app: 'Authentication', type: 'CPU élevé', severity: 'Warning', time: '10:30' },
-    { app: 'Reporting', type: 'Temps de réponse', severity: 'Warning', time: '10:45' }
-  ];
+  loading = false;
+  errorMessage = '';
 
-  serverMetrics: ServerMetric[] = [
-    { name: 'SRV-01', cpu: 72, ram: 64 },
-    { name: 'SRV-02', cpu: 91, ram: 88 },
-    { name: 'SRV-03', cpu: 67, ram: 58 },
-    { name: 'SRV-04', cpu: 95, ram: 90 },
-    { name: 'SRV-05', cpu: 61, ram: 52 }
-  ];
+  ngOnInit(): void {
+    this.loading = true;
+    this.errorMessage = '';
 
-  selectedServer: ServerMetric = this.serverMetrics[0];
+    this.dashboardService.pollDashboardData(7000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => this.applyDashboardData(data),
+        error: (error) => {
+          console.error('Erreur chargement dashboard :', error);
+          this.errorMessage = 'Impossible de charger les donnees du dashboard.';
+          this.finishLoading();
+        }
+      });
+    this.nameRotateHandle = setInterval(() => this.rotateServerName(), 10000);
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.nameRotateHandle) {
+      clearInterval(this.nameRotateHandle);
+    }
+  }
+
+  loadDashboard(showLoading = true): void {
+    if (showLoading) {
+      this.loading = true;
+      this.errorMessage = '';
+    }
+
+    this.dashboardService.getDashboardData()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data: DashboardResponse) => this.applyDashboardData(data),
+        error: (error) => {
+          console.error('Erreur chargement dashboard :', error);
+          this.errorMessage = 'Impossible de charger les donnees du dashboard.';
+          this.finishLoading();
+        }
+      });
+  }
 
   selectServer(serverName: string): void {
-    const found = this.serverMetrics.find(server => server.name === serverName);
-    if (found) {
-      this.selectedServer = found;
+    const foundIndex = this.serverMetrics.findIndex(server => server.name === serverName);
+    if (foundIndex >= 0) {
+      this.selectedIndex = foundIndex;
+      this.selectedServer = this.serverMetrics[foundIndex];
+      this.baseMetricLocked = true;
     }
+  }
+
+  private rotateServerName(): void {
+    if (this.serverMetrics.length === 0) {
+      return;
+    }
+
+    this.selectedIndex = (this.selectedIndex + 1) % this.serverMetrics.length;
+    const nextName = this.serverMetrics[this.selectedIndex]?.name ?? '-';
+
+    this.selectedServer = {
+      name: nextName,
+      cpu: this.selectedServer.cpu,
+      ram: this.selectedServer.ram
+    };
+  }
+
+  private finishLoading(): void {
+    this.loading = false;
+    this.cdr.detectChanges();
+  }
+
+  private applyDashboardData(data: DashboardResponse): void {
+    this.stats = {
+      totalServers: data.totalServers ?? 0,
+      active: data.activeServers ?? 0,
+      warnings: data.warningServers ?? 0,
+      critical: data.criticalServers ?? 0
+    };
+
+    const allServers = data.recentServers ?? [];
+    if (allServers.length > 5) {
+      this.serverWindowStart = (this.serverWindowStart + 5) % allServers.length;
+    } else {
+      this.serverWindowStart = 0;
+    }
+
+    this.rows = this.sliceWindow(allServers, this.serverWindowStart, 5).map((row) => ({
+      server: row.server,
+      ipAddress: row.ipAddress,
+      status: row.status,
+      time: this.formatTime(row.time)
+    }));
+
+    const allApplications = data.recentApplications ?? [];
+    if (allApplications.length > 5) {
+      this.appWindowStart = (this.appWindowStart + 5) % allApplications.length;
+    } else {
+      this.appWindowStart = 0;
+    }
+
+    this.applications = this.sliceWindow(allApplications, this.appWindowStart, 5).map((app) => ({
+      app: app.app,
+      type: app.type,
+      severity: app.severity,
+      time: this.formatTime(app.time)
+    }));
+
+    this.serverMetrics = (data.serverMetrics ?? []).map((server) => ({
+      name: server.name,
+      cpu: this.clampMetric(server.cpu),
+      ram: this.clampMetric(server.ram)
+    }));
+
+    if (!this.baseMetricLocked && this.serverMetrics.length > 0) {
+      this.selectedServer = this.serverMetrics[0];
+      this.selectedIndex = 0;
+      this.baseMetricLocked = true;
+    }
+
+    this.finishLoading();
+  }
+
+  private formatTime(value?: string): string {
+    if (!value) return '--:--';
+
+    if (/^\d{2}:\d{2}$/.test(value)) {
+      return value;
+    }
+
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      return '--:--';
+    }
+
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
+  private clampMetric(value?: number): number {
+    if (value === null || value === undefined || isNaN(value)) return 0;
+    if (value < 0) return 0;
+    if (value > 100) return 100;
+    return Math.round(value);
+  }
+
+  private sliceWindow<T>(items: T[], start: number, size: number): T[] {
+    if (items.length <= size) {
+      return items.slice(0, size);
+    }
+
+    const end = start + size;
+    if (end <= items.length) {
+      return items.slice(start, end);
+    }
+
+    const first = items.slice(start);
+    const remaining = size - first.length;
+    return first.concat(items.slice(0, remaining));
   }
 }

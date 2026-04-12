@@ -219,6 +219,25 @@
               </div>
             </div>
 
+            <label class="form-label">OS</label>
+            <select class="form-control" [(ngModel)]="form.os">
+              <option value="">Choisir un OS</option>
+              <option value="Linux">Linux</option>
+              <option value="Ubuntu">Ubuntu</option>
+              <option value="Windows">Windows</option>
+              <option value="Debian">Debian</option>
+              <option value="CentOS">CentOS</option>
+            </select>
+
+            <label class="form-label">Status</label>
+            <select class="form-control" [(ngModel)]="form.status">
+              <option value="Online">Online</option>
+              <option value="Warning">Warning</option>
+              <option value="Critical">Critical</option>
+              <option value="Offline">Offline</option>
+              <option value="Maintenance">Maintenance</option>
+            </select>
+
             <div class="modal-actions">
               <button class="btn-soft" type="button" (click)="closeAddServer()">Cancel</button>
               <button class="btn-primary-soft" type="button" (click)="addServer()">Add</button>

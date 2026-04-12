@@ -1,9 +1,14 @@
 package tn.isam.spring.bankSupervision.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
+@Getter
+@Setter
 public class Metric {
 
     @Id
@@ -16,6 +21,7 @@ public class Metric {
 
     private LocalDateTime timestamp;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "server_id")
     private Server server;
