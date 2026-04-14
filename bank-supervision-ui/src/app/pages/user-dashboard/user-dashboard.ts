@@ -1,5 +1,5 @@
-import { Component, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, HostListener, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { ChatBot } from '../chat-bot/chat-bot';
 
@@ -37,7 +37,9 @@ interface ServerMetric {
   templateUrl: './user-dashboard.html',
   styleUrls: ['./user-dashboard.css']
 })
-export class UserDashboard {
+export class UserDashboard implements OnInit {
+  private platformId = inject(PLATFORM_ID);
+  private isBrowser = isPlatformBrowser(this.platformId);
   stats: DashboardStats = {
     totalServers: 12,
     active: 9,
@@ -82,6 +84,37 @@ export class UserDashboard {
   };
 
   constructor(private router: Router) {}
+
+  ngOnInit(): void {
+    if (!this.isBrowser) return;
+
+    const savedUser =
+      JSON.parse(localStorage.getItem('currentUser') || 'null') ||
+      JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+
+    if (!savedUser) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    this.currentUser = {
+      fullName:
+        savedUser.fullName ||
+        savedUser.name ||
+        savedUser.userName ||
+        savedUser.username ||
+        'Utilisateur',
+      username:
+        savedUser.username ||
+        savedUser.userName ||
+        savedUser.name ||
+        'user1',
+      role: savedUser.role || 'Utilisateur',
+      email: savedUser.email || 'user@bct.local',
+      status: savedUser.status || 'Connecté',
+      image: savedUser.image || savedUser.photo || 'assets/profil.png'
+    };
+  }
 
   selectServer(serverName: string): void {
     const found = this.serverMetrics.find(server => server.name === serverName);

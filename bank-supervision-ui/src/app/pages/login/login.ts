@@ -41,6 +41,17 @@ export class Login implements OnInit {
     this.showPassword = !this.showPassword;
   }
 
+  private decodeJwt(token: string): any {
+    try {
+      const payload = token.split('.')[1];
+      const decodedPayload = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decodedPayload);
+    } catch (error) {
+      console.error('Erreur décodage token :', error);
+      return null;
+    }
+  }
+
   onSubmit(): void {
     if (!this.isBrowser) return;
 
@@ -56,17 +67,24 @@ export class Login implements OnInit {
       password: this.password
     };
 
-
     this.authService.login(request).subscribe({
       next: (res) => {
-        console.log('reeeeeeeeeeeeeeeeeesultat',res);
+        console.log('Résultat login :', res);
+
+        // selon ton backend actuel
+        const accessToken = res.access_token || res.access_token;
+        const refreshToken = res.refresh_token || res.refresh_token;
+        const tokenType = res.token_type || res.token_type;
+
+        const decodedToken = this.decodeJwt(accessToken);
+
         const currentUser = {
-          name: res.name,
-          email: this.email.trim(),
-          token: res.access_token,
-          refreshToken: res.refresh_token,
-          tokenType: res.token_type,
-          role: res.role
+          name: decodedToken?.name || '',
+          email: decodedToken?.email || this.email.trim(),
+          token: accessToken,
+          refreshToken: refreshToken,
+          tokenType: tokenType,
+          role: res.role || decodedToken?.role || 'USER'
         };
 
         if (this.rememberMe) {
@@ -77,8 +95,7 @@ export class Login implements OnInit {
           localStorage.removeItem('currentUser');
         }
 
-        // Navigate based on role
-        const targetRoute = res.role === 'ADMIN' ? '/dashboard' : '/user-dashboard';
+        const targetRoute = currentUser.role === 'ADMIN' ? '/dashboard' : '/user-dashboard';
         this.router.navigate([targetRoute]);
       },
       error: (err) => {
@@ -86,6 +103,7 @@ export class Login implements OnInit {
           err?.status === 400 && err.error?.message
             ? err.error.message
             : 'Mail ou mot de passe incorrect';
+
         this.error = message;
         this.cdr.markForCheck();
       }

@@ -184,12 +184,21 @@ export class UserServers implements OnInit {
     }
 
     this.currentUser = {
-      fullName: savedUser.name || 'Utilisateur',
-      username: savedUser.username || 'user1',
+      fullName:
+        savedUser.fullName ||
+        savedUser.name ||
+        savedUser.userName ||
+        savedUser.username ||
+        'Utilisateur',
+      username:
+        savedUser.username ||
+        savedUser.userName ||
+        savedUser.name ||
+        'user1',
       role: savedUser.role || 'Utilisateur',
       email: savedUser.email || 'user@bank.com',
-      status: 'Connecté',
-      image: savedUser.image || 'assets/profil.png'
+      status: savedUser.status || 'Connecté',
+      image: savedUser.image || savedUser.photo || 'assets/profil.png'
     };
   }
 

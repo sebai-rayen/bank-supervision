@@ -91,11 +91,11 @@
           <div class="profile-wrapper">
             <div class="top-user" (click)="toggleProfileCard($event)">
               <div class="top-avatar">
-                <img src="assets/profil.png" alt="Profil" class="top-avatar-img" />
+                <img [src]="currentUser.image" alt="Profil" class="top-avatar-img" />
               </div>
 
               <div class="top-user-info">
-                <div class="top-username">Utilisateur</div>
+                <div class="top-username">{{ currentUser.fullName }}</div>
                 <div class="top-status">
                   <span class="top-dot"></span>
                   Connecté
