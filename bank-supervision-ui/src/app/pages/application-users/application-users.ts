@@ -1,12 +1,13 @@
-import { Component, HostListener, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { Component, HostListener,ChangeDetectorRef, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { ApplicationApi, ApplicationService } from '../../services/application.service';
 
 type ApplicationStatus = 'En ligne' | 'Alerte' | 'Arrêtée' | 'Maintenance';
 
 interface ApplicationItem {
-  id: number;
+  id?: number;
   nom: string;
   serveur: string;
   version: string;
@@ -23,6 +24,19 @@ interface ApplicationItem {
   dernierDeploiement: string;
   utilisateurs: string;
 }
+
+interface ApplicationForm {
+  name: string;
+  server: string;
+  version: string;
+  status: string;
+}
+
+const DEFAULT_LAST_CHECK = '--:--';
+const DEFAULT_STATUS = 'Running';
+const DEFAULT_ENVIRONNEMENT = 'Production';
+const DEFAULT_TECHNOLOGIE = ['-'];
+const DEFAULT_DESCRIPTION = 'Application ajoutee par l utilisateur.';
 
 interface CurrentUser {
   fullName: string;
@@ -43,9 +57,14 @@ interface CurrentUser {
 export class ApplicationUsers implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private applicationService = inject(ApplicationService);
+  private cdr = inject(ChangeDetectorRef);
 
   searchTerm = '';
   showProfileCard = false;
+  showAdd = false;
+  loading = false;
+  errorMessage = '';
 
   currentUser: CurrentUser = {
     fullName: 'Utilisateur',
@@ -56,118 +75,10 @@ export class ApplicationUsers implements OnInit {
     image: 'assets/profil.png'
   };
 
-  applications: ApplicationItem[] = [
-    {
-      id: 1,
-      nom: 'Core Banking',
-      serveur: 'SRV-01',
-      version: 'v3.2.1',
-      statut: 'En ligne',
-      heure: '09:20',
-      description: 'Application centrale de gestion bancaire et des opérations internes.',
-      responsable: 'Équipe Banque Digitale',
-      environnement: 'Production',
-      technologie: ['Angular', 'Spring Boot', 'Oracle'],
-      disponibilite: 99,
-      latence: 120,
-      charge: 42,
-      incidents: 0,
-      dernierDeploiement: '12/03/2026',
-      utilisateurs: '1 280'
-    },
-    {
-      id: 2,
-      nom: 'API Mobile Banking',
-      serveur: 'SRV-02',
-      version: 'v2.8.4',
-      statut: 'Alerte',
-      heure: '09:45',
-      description: 'API sécurisée utilisée par les applications mobiles bancaires.',
-      responsable: 'Équipe API',
-      environnement: 'Production',
-      technologie: ['Node.js', 'Express', 'MongoDB'],
-      disponibilite: 94,
-      latence: 240,
-      charge: 71,
-      incidents: 2,
-      dernierDeploiement: '10/03/2026',
-      utilisateurs: '8 430'
-    },
-    {
-      id: 3,
-      nom: 'Internet Banking',
-      serveur: 'SRV-03',
-      version: 'v5.1.0',
-      statut: 'En ligne',
-      heure: '10:05',
-      description: 'Portail web destiné aux clients pour la consultation et la gestion des comptes.',
-      responsable: 'Équipe Web Banking',
-      environnement: 'Production',
-      technologie: ['Angular', '.NET', 'SQL Server'],
-      disponibilite: 98,
-      latence: 135,
-      charge: 55,
-      incidents: 1,
-      dernierDeploiement: '08/03/2026',
-      utilisateurs: '12 600'
-    },
-    {
-      id: 4,
-      nom: 'Passerelle Paiement',
-      serveur: 'SRV-04',
-      version: 'v4.0.7',
-      statut: 'Arrêtée',
-      heure: '10:30',
-      description: 'Service de gestion des flux de paiement et validation des transactions.',
-      responsable: 'Équipe Monétique',
-      environnement: 'Préproduction',
-      technologie: ['Java', 'Kafka', 'PostgreSQL'],
-      disponibilite: 0,
-      latence: 0,
-      charge: 0,
-      incidents: 4,
-      dernierDeploiement: '05/03/2026',
-      utilisateurs: '0'
-    },
-    {
-      id: 5,
-      nom: 'Service Reporting',
-      serveur: 'SRV-05',
-      version: 'v1.9.3',
-      statut: 'En ligne',
-      heure: '10:50',
-      description: 'Génération des rapports financiers et tableaux de bord métiers.',
-      responsable: 'Équipe BI',
-      environnement: 'Production',
-      technologie: ['Python', 'FastAPI', 'Power BI'],
-      disponibilite: 97,
-      latence: 160,
-      charge: 48,
-      incidents: 1,
-      dernierDeploiement: '11/03/2026',
-      utilisateurs: '420'
-    },
-    {
-      id: 6,
-      nom: 'Gestion KYC',
-      serveur: 'SRV-06',
-      version: 'v2.2.0',
-      statut: 'Maintenance',
-      heure: '11:10',
-      description: 'Module de vérification d’identité et conformité client.',
-      responsable: 'Équipe Conformité',
-      environnement: 'Production',
-      technologie: ['React', 'Java', 'Elastic'],
-      disponibilite: 88,
-      latence: 210,
-      charge: 36,
-      incidents: 0,
-      dernierDeploiement: '09/03/2026',
-      utilisateurs: '215'
-    }
-  ];
+  applications: ApplicationItem[] = [];
 
-  selectedApplication: ApplicationItem = this.applications[0];
+  selectedApplication: ApplicationItem = this.createEmptyApplication();
+  form: ApplicationForm = this.createEmptyForm();
 
   constructor(private router: Router) {}
 
@@ -188,7 +99,6 @@ export class ApplicationUsers implements OnInit {
         savedUser.fullName ||
         savedUser.name ||
         savedUser.userName ||
-        savedUser.username ||
         'Utilisateur',
 
       username:
@@ -214,6 +124,36 @@ export class ApplicationUsers implements OnInit {
         savedUser.photo ||
         'assets/profil.png'
     };
+
+    this.loadApplications();
+  }
+
+  loadApplications(): void {
+    this.loading = true;
+    this.errorMessage = '';
+
+    this.applicationService.getMyApplications().subscribe({
+      next: (data) => {
+        this.applyLoadedApplications(data);
+        this.finishLoading();
+      },
+      error: (error) => {
+        console.error('Erreur chargement applications (mine) :', error);
+        this.applicationService.getApplications().subscribe({
+          next: (data) => {
+            this.applyLoadedApplications(data);
+            this.finishLoading();
+          },
+          error: (fallbackError) => {
+            console.error('Erreur chargement applications :', fallbackError);
+            this.errorMessage = 'Impossible de charger les applications.';
+            this.applications = [];
+            this.selectedApplication = this.createEmptyApplication();
+            this.finishLoading();
+          }
+        });
+      }
+    });
   }
 
   get applicationsFiltrees(): ApplicationItem[] {
@@ -318,6 +258,43 @@ export class ApplicationUsers implements OnInit {
     this.selectedApplication = app;
   }
 
+  openAddApplication(): void {
+    this.showAdd = true;
+  }
+
+  closeAddApplication(): void {
+    this.showAdd = false;
+    this.resetForm();
+  }
+
+  addApplication(): void {
+    if (!this.isFormValid()) {
+      return;
+    }
+
+    const payload: ApplicationApi = {
+      name: this.form.name.trim(),
+      servers: this.form.server.trim(),
+      version: this.form.version.trim(),
+      status: this.form.status || DEFAULT_STATUS
+    };
+
+    this.applicationService.addApplication(payload).subscribe({
+      next: (created) => {
+        const newItem = this.mapApiToUi(created, payload);
+        this.applications = [newItem, ...this.applications];
+        this.selectedApplication = newItem;
+        this.closeAddApplication();
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Erreur ajout application :', error);
+        this.errorMessage = 'Impossible d\'ajouter l\'application.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   statusClass(status: ApplicationStatus): string {
     switch (status) {
       case 'En ligne':
@@ -361,4 +338,100 @@ export class ApplicationUsers implements OnInit {
     sessionStorage.removeItem('currentUser');
     this.router.navigate(['/login']);
   }
+
+  private createEmptyForm(): ApplicationForm {
+    return {
+      name: '',
+      server: '',
+      version: '',
+      status: DEFAULT_STATUS
+    };
+  }
+
+  private resetForm(): void {
+    this.form = this.createEmptyForm();
+  }
+
+  private isFormValid(): boolean {
+    return Boolean(
+      this.form.name.trim() &&
+      this.form.server.trim() &&
+      this.form.version.trim()
+    );
+  }
+
+  private createEmptyApplication(): ApplicationItem {
+    return {
+      nom: '',
+      serveur: '',
+      version: '',
+      statut: 'En ligne',
+      heure: DEFAULT_LAST_CHECK,
+      description: '',
+      responsable: '',
+      environnement: DEFAULT_ENVIRONNEMENT,
+      technologie: [],
+      disponibilite: 0,
+      latence: 0,
+      charge: 0,
+      incidents: 0,
+      dernierDeploiement: '',
+      utilisateurs: ''
+    };
+  }
+
+  private applyLoadedApplications(data: ApplicationApi[]): void {
+    this.applications = data.map((app) => this.mapApiToUi(app));
+    this.selectedApplication = this.applications[0] || this.createEmptyApplication();
+  }
+
+  private mapApiToUi(api: ApplicationApi, fallback?: ApplicationApi): ApplicationItem {
+    const status = this.mapStatusToUser(api.status || fallback?.status || DEFAULT_STATUS);
+    return {
+      id: api.id,
+      nom: api.name || fallback?.name || 'Nouvelle application',
+      serveur: api.servers || fallback?.servers || 'N/A',
+      version: api.version || fallback?.version || 'v1.0.0',
+      statut: status,
+      heure: this.formatTime(api.lastCheck),
+      description: DEFAULT_DESCRIPTION,
+      responsable: this.currentUser.fullName || 'Utilisateur',
+      environnement: DEFAULT_ENVIRONNEMENT,
+      technologie: DEFAULT_TECHNOLOGIE,
+      disponibilite: status === 'En ligne' ? 99 : 70,
+      latence: status === 'Alerte' ? 240 : 120,
+      charge: 45,
+      incidents: status === 'Alerte' ? 1 : 0,
+      dernierDeploiement: 'Aujourd hui',
+      utilisateurs: '0'
+    };
+  }
+
+  private mapStatusToUser(status?: string): ApplicationStatus {
+    const value = (status || DEFAULT_STATUS).toLowerCase();
+    if (value === 'running') return 'En ligne';
+    if (value === 'warning') return 'Alerte';
+    if (value === 'stopped') return 'Arrêtée';
+    if (value === 'maintenance') return 'Maintenance';
+    return 'En ligne';
+  }
+
+  private formatTime(value?: string): string {
+    if (!value) return DEFAULT_LAST_CHECK;
+
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      return DEFAULT_LAST_CHECK;
+    }
+
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
+  private finishLoading(): void {
+    this.loading = false;
+    this.cdr.detectChanges();
+  }
 }
+

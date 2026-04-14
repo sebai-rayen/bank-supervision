@@ -101,7 +101,7 @@
           </div>
 
           <div class="top-user-info">
-           <div class="top-username">Utilisateur</div>
+           <div class="top-username">{{ currentUser.fullName }}</div>
                 <div class="top-status">
                   <span class="top-dot"></span>
                   Connecté
@@ -163,11 +163,18 @@
 
         <div class="application-layout">
           <section class="panel left-panel">
-            <div class="panel-head">
+            <div class="panel-head panel-head-actions">
               <div>
                 <div class="panel-title">Liste des applications</div>
                 <div class="panel-sub">Sélectionnez une application pour consulter ses détails</div>
               </div>
+              <button
+                type="button"
+                class="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 shadow-sm rounded-3"
+                (click)="openAddApplication()">
+                <i class="bi bi-plus-circle-fill"></i>
+                <span>Ajouter une application</span>
+              </button>
             </div>
 
             <div class="table-wrap">
@@ -218,7 +225,7 @@
           </section>
 
           <section class="panel right-panel">
-            <div class="panel-head">
+            <div class="panel-head panel-head-actions">
               <div>
                 <div class="panel-title">Fiche application</div>
                 <div class="panel-sub">{{ selectedApplication.nom }}</div>
@@ -345,6 +352,51 @@
             </section>
           </section>
         </div>
+        <div
+          class="modal-backdrop"
+          *ngIf="showAdd"
+          (click)="closeAddApplication()"></div>
+
+        <div class="modal-card" *ngIf="showAdd">
+          <div class="modal-head">
+            <div class="modal-title">Ajouter une application</div>
+            <button class="modal-x" type="button" (click)="closeAddApplication()">×</button>
+          </div>
+
+          <div class="modal-body">
+            <label class="form-label">Nom de l’application</label>
+            <input
+              class="form-control"
+              [(ngModel)]="form.name"
+              placeholder="Ex: Core Banking" />
+
+            <label class="form-label">Serveur</label>
+            <input
+              class="form-control"
+              [(ngModel)]="form.server"
+              placeholder="Ex: SRV-06" />
+
+            <label class="form-label">Version</label>
+            <input
+              class="form-control"
+              [(ngModel)]="form.version"
+              placeholder="Ex: v1.0.0" />
+
+            <label class="form-label">Statut</label>
+            <select class="form-control" [(ngModel)]="form.status">
+              <option value="Running">En ligne</option>
+              <option value="Running">Running</option>
+              <option value="Warning">Warning</option>
+              <option value="Stopped">Stopped</option>
+            </select>
+
+            <div class="modal-actions">
+              <button class="btn-soft" type="button" (click)="closeAddApplication()">Annuler</button>
+              <button class="btn-primary-soft" type="button" (click)="addApplication()">Ajouter</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>

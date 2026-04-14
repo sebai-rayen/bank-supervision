@@ -22,6 +22,10 @@ export class ApplicationService {
     return this.http.get<ApplicationApi[]>(this.apiUrl);
   }
 
+  getMyApplications(): Observable<ApplicationApi[]> {
+    return this.http.get<ApplicationApi[]>(`${this.apiUrl}/mine`);
+  }
+
   addApplication(application: ApplicationApi): Observable<ApplicationApi> {
     return this.http.post<ApplicationApi>(this.apiUrl, application);
   }
