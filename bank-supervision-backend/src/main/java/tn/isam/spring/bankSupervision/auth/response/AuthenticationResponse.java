@@ -20,8 +20,4 @@ public class AuthenticationResponse {
     private String refreshToken;
     @JsonProperty("token_type")
     private String tokenType;
-    @JsonProperty("role")
-    private String role;
-    @JsonProperty("name")
-    private String name;
 }

@@ -8,12 +8,16 @@ import org.springframework.stereotype.Service;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
 public class JwtService {
 
     public static final String TOKEN_TYPE = "token_type";
+    public static final String CLAIM_NAME = "name";
+    public static final String CLAIM_EMAIL = "email";
+
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
 
@@ -28,16 +32,22 @@ public class JwtService {
         this.publicKey = KeyUtils.loadPublicKey("keys.local-only/public_key.pem");
     }
 
-    public String generateAccessToken(String username) {
-        return buildToken(username, Map.of(TOKEN_TYPE, "ACCESS_TOKEN"), accessTokenExpiration);
+    public String generateAccessToken(String username, String name, String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_TYPE, "ACCESS_TOKEN");
+        claims.put(CLAIM_NAME, name);
+        claims.put(CLAIM_EMAIL, email);
+
+        return buildToken(username, claims, accessTokenExpiration);
     }
 
-    public String generateName(String username) {
-        return buildToken(username, Map.of(TOKEN_TYPE, "NAME"), accessTokenExpiration);
-    }
+    public String generateRefreshToken(String username, String name, String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_TYPE, "REFRESH_TOKEN");
+        claims.put(CLAIM_NAME, name);
+        claims.put(CLAIM_EMAIL, email);
 
-    public String generateRefreshToken(String username) {
-        return buildToken(username, Map.of(TOKEN_TYPE, "REFRESH_TOKEN"), refreshTokenExpiration);
+        return buildToken(username, claims, refreshTokenExpiration);
     }
 
     private String buildToken(String username, Map<String, Object> claims, long expiration) {
@@ -59,6 +69,14 @@ public class JwtService {
         return extractClaims(token).getSubject();
     }
 
+    public String extractName(String token) {
+        return extractClaims(token).get(CLAIM_NAME, String.class);
+    }
+
+    public String extractEmail(String token) {
+        return extractClaims(token).get(CLAIM_EMAIL, String.class);
+    }
+
     private boolean isTokenExpired(String token) {
         return extractClaims(token).getExpiration().before(new Date());
     }
@@ -66,7 +84,7 @@ public class JwtService {
     private Claims extractClaims(String token) {
         try {
             return Jwts.parserBuilder()
-                    .setSigningKey(publicKey) // ✅ use parserBuilder + setSigningKey
+                    .setSigningKey(publicKey)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
@@ -81,10 +99,15 @@ public class JwtService {
         if (!"REFRESH_TOKEN".equals(claims.get(TOKEN_TYPE, String.class))) {
             throw new RuntimeException("Invalid token type");
         }
+
         if (claims.getExpiration().before(new Date())) {
             throw new RuntimeException("Refresh token expired");
         }
 
-        return generateAccessToken(claims.getSubject());
+        String username = claims.getSubject();
+        String name = claims.get(CLAIM_NAME, String.class);
+        String email = claims.get(CLAIM_EMAIL, String.class);
+
+        return generateAccessToken(username, name, email);
     }
 }

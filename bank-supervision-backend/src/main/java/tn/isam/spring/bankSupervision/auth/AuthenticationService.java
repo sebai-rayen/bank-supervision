@@ -54,11 +54,17 @@ public class AuthenticationService {
             log.info("[Login] Authentication successful for: {}", user.getEmail());
 
             // Generate JWT tokens
-            String name = jwtService.generateName(user.getUsername());
-            String accessToken = jwtService.generateAccessToken(user.getUsername());
-            String refreshToken = jwtService.generateRefreshToken(user.getUsername());
-            String role = user.getAuthorities().stream()
-                                    .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())) ? "ADMIN" : "USER";
+            String accessToken = jwtService.generateAccessToken(
+                    user.getUsername(),
+                    user.getNom(),
+                    user.getEmail()
+            );
+
+            String refreshToken = jwtService.generateRefreshToken(
+                    user.getUsername(),
+                    user.getNom(),
+                    user.getEmail()
+            );
 
             log.info("[Login] Tokens generated for: {}", user.getEmail());
 
@@ -66,8 +72,6 @@ public class AuthenticationService {
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
                     .tokenType("Bearer")
-                    .role(role)
-                    .name(name)
                     .build();
 
         } catch (BadCredentialsException ex) {
@@ -79,7 +83,7 @@ public class AuthenticationService {
             // This usually wraps UsernameNotFoundException
             if (ex.getCause() instanceof UsernameNotFoundException) {
                 log.warn("[Login] User not found: {}", request.getEmail());
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non trouv�");
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non trouvé");
             }
             log.error("[Login] Internal authentication error for {}: {}", request.getEmail(), ex.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur serveur");
