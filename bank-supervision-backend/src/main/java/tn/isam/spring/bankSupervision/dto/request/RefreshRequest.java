@@ -1,4 +1,4 @@
-package tn.isam.spring.bankSupervision.auth.request;
+package tn.isam.spring.bankSupervision.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

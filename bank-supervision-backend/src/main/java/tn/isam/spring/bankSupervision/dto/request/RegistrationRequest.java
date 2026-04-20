@@ -1,4 +1,4 @@
-package tn.isam.spring.bankSupervision.auth.request;
+package tn.isam.spring.bankSupervision.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -46,6 +46,7 @@ public class RegistrationRequest {
     String password;
 
     private String roleType;
+    private Boolean active;
 
 //
 //    @NotBlank(message = "VALIDATION.REGISTRATION.CONFIRM_PASSWORD.BLANK")

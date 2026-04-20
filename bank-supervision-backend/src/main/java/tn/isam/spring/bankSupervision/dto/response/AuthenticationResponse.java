@@ -1,4 +1,4 @@
-package tn.isam.spring.bankSupervision.auth.response;
+package tn.isam.spring.bankSupervision.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -20,4 +20,6 @@ public class AuthenticationResponse {
     private String refreshToken;
     @JsonProperty("token_type")
     private String tokenType;
+    @JsonProperty("role")
+    private String role;
 }

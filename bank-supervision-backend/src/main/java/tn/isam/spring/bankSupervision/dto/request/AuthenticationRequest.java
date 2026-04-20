@@ -1,4 +1,4 @@
-package tn.isam.spring.bankSupervision.auth.request;
+package tn.isam.spring.bankSupervision.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
