@@ -1,14 +1,18 @@
-import { Component, HostListener, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { Component, HostListener, OnInit, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { ServerApi, ServerService } from '../../services/server.service';
+
+type UserServerStatus = 'Online' | 'Warning' | 'Offline' | 'Maintenance';
 
 interface UserServerItem {
+  id?: number;
   name: string;
   ip: string;
   port: number;
   os: string;
-  status: 'Online' | 'Warning' | 'Offline' | 'Maintenance';
+  status: UserServerStatus;
   lastCheck: string;
   location: string;
   cpu: number;
@@ -17,6 +21,15 @@ interface UserServerItem {
   uptime: string;
   owner: string;
   description: string;
+}
+
+interface CurrentUser {
+  fullName: string;
+  username: string;
+  role: string;
+  email: string;
+  status: string;
+  image: string;
 }
 
 @Component({
@@ -29,177 +42,35 @@ interface UserServerItem {
 export class UserServers implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private router = inject(Router);
+  private serverService = inject(ServerService);
+  private cdr = inject(ChangeDetectorRef);
 
   searchTerm = '';
   currentPage = 1;
   pageSize = 6;
   showProfileCard = false;
 
-  currentUser = {
+  loading = false;
+  errorMessage = '';
+
+  currentUser: CurrentUser = {
     fullName: 'Utilisateur',
     username: 'user1',
     role: 'Utilisateur',
     email: 'user@bank.com',
-    status: 'Connecté',
+    status: 'Connecte',
     image: 'assets/profil.png'
   };
 
-  servers: UserServerItem[] = [
-    {
-      name: 'SRV-01',
-      ip: '192.168.1.10',
-      port: 22,
-      os: 'Linux',
-      status: 'Online',
-      lastCheck: '10:00',
-      location: 'Datacenter A',
-      cpu: 42,
-      ram: 58,
-      storage: 64,
-      uptime: '12 jours',
-      owner: 'Infrastructure',
-      description: 'Serveur applicatif principal.'
-    },
-    {
-      name: 'SRV-02',
-      ip: '192.168.1.11',
-      port: 80,
-      os: 'Ubuntu',
-      status: 'Warning',
-      lastCheck: '09:20',
-      location: 'Datacenter A',
-      cpu: 76,
-      ram: 81,
-      storage: 69,
-      uptime: '8 jours',
-      owner: 'Web Team',
-      description: 'Serveur web avec charge élevée.'
-    },
-    {
-      name: 'SRV-03',
-      ip: '192.168.1.12',
-      port: 22,
-      os: 'Windows',
-      status: 'Offline',
-      lastCheck: '08:45',
-      location: 'Datacenter B',
-      cpu: 0,
-      ram: 0,
-      storage: 52,
-      uptime: 'Indisponible',
-      owner: 'Ops Team',
-      description: 'Serveur arrêté pour incident technique.'
-    },
-    {
-      name: 'SRV-04',
-      ip: '192.168.1.13',
-      port: 21,
-      os: 'Debian',
-      status: 'Maintenance',
-      lastCheck: '11:10',
-      location: 'Datacenter B',
-      cpu: 18,
-      ram: 33,
-      storage: 41,
-      uptime: 'Maintenance',
-      owner: 'Infrastructure',
-      description: 'Serveur en cours de maintenance planifiée.'
-    },
-    {
-      name: 'SRV-05',
-      ip: '192.168.1.14',
-      port: 22,
-      os: 'Linux',
-      status: 'Online',
-      lastCheck: '12:00',
-      location: 'Datacenter C',
-      cpu: 36,
-      ram: 48,
-      storage: 57,
-      uptime: '21 jours',
-      owner: 'Platform Team',
-      description: 'Serveur de traitement batch.'
-    },
-    {
-      name: 'SRV-06',
-      ip: '192.168.1.15',
-      port: 443,
-      os: 'Ubuntu',
-      status: 'Warning',
-      lastCheck: '12:15',
-      location: 'Datacenter C',
-      cpu: 69,
-      ram: 73,
-      storage: 78,
-      uptime: '15 jours',
-      owner: 'Security Team',
-      description: 'Serveur exposé HTTPS avec alertes mémoire.'
-    },
-    {
-      name: 'SRV-07',
-      ip: '192.168.1.16',
-      port: 3306,
-      os: 'CentOS',
-      status: 'Online',
-      lastCheck: '12:45',
-      location: 'Datacenter D',
-      cpu: 49,
-      ram: 54,
-      storage: 62,
-      uptime: '33 jours',
-      owner: 'DB Team',
-      description: 'Base de données secondaire.'
-    },
-    {
-      name: 'SRV-08',
-      ip: '192.168.1.17',
-      port: 8080,
-      os: 'Rocky Linux',
-      status: 'Maintenance',
-      lastCheck: '13:10',
-      location: 'Datacenter D',
-      cpu: 12,
-      ram: 22,
-      storage: 45,
-      uptime: 'Maintenance',
-      owner: 'Middleware',
-      description: 'Serveur middleware en mise à jour.'
-    }
-  ];
-
-  selectedServer: UserServerItem = this.servers[0];
-
-  constructor(private router: Router) {}
+  servers: UserServerItem[] = [];
+  selectedServer: UserServerItem = this.createEmptyServer();
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
 
-    const savedUser =
-      JSON.parse(localStorage.getItem('currentUser') || 'null') ||
-      JSON.parse(sessionStorage.getItem('currentUser') || 'null');
-
-    if (!savedUser) {
-      this.router.navigate(['/login']);
-      return;
-    }
-
-    this.currentUser = {
-      fullName:
-        savedUser.fullName ||
-        savedUser.name ||
-        savedUser.userName ||
-        savedUser.username ||
-        'Utilisateur',
-      username:
-        savedUser.username ||
-        savedUser.userName ||
-        savedUser.name ||
-        'user1',
-      role: savedUser.role || 'Utilisateur',
-      email: savedUser.email || 'user@bank.com',
-      status: savedUser.status || 'Connecté',
-      image: savedUser.image || savedUser.photo || 'assets/profil.png'
-    };
+    this.restoreUserFromStorage();
+    this.loadServers();
   }
 
   get filteredServers(): UserServerItem[] {
@@ -232,9 +103,9 @@ export class UserServers implements OnInit {
 
   get summary() {
     const total = this.servers.length;
-    const online = this.servers.filter(s => s.status === 'Online').length;
-    const warning = this.servers.filter(s => s.status === 'Warning').length;
-    const maintenance = this.servers.filter(s => s.status === 'Maintenance').length;
+    const online = this.servers.filter((s) => s.status === 'Online').length;
+    const warning = this.servers.filter((s) => s.status === 'Warning').length;
+    const maintenance = this.servers.filter((s) => s.status === 'Maintenance').length;
 
     return [
       { label: 'Mes serveurs', value: total, tone: 'blue' },
@@ -280,9 +151,7 @@ export class UserServers implements OnInit {
   }
 
   closeProfileCard(event?: MouseEvent): void {
-    if (event) {
-      event.stopPropagation();
-    }
+    event?.stopPropagation();
     this.showProfileCard = false;
   }
 
@@ -292,10 +161,7 @@ export class UserServers implements OnInit {
   }
 
   logout(event?: MouseEvent): void {
-    if (event) {
-      event.stopPropagation();
-    }
-
+    event?.stopPropagation();
     this.showProfileCard = false;
 
     if (!this.isBrowser) return;
@@ -303,5 +169,116 @@ export class UserServers implements OnInit {
     localStorage.removeItem('currentUser');
     sessionStorage.removeItem('currentUser');
     this.router.navigate(['/login']);
+  }
+
+  private loadServers(): void {
+    this.loading = true;
+    this.errorMessage = '';
+
+    this.serverService.getServers().subscribe({
+      next: (servers) => {
+        this.servers = servers.map((server) => this.mapApiToUi(server));
+        this.currentPage = 1;
+        this.selectedServer = this.servers[0] || this.createEmptyServer();
+        this.finishLoading();
+      },
+      error: (error) => {
+        console.error('Erreur chargement user servers :', error);
+        this.errorMessage = 'Impossible de charger les serveurs.';
+        this.servers = [];
+        this.selectedServer = this.createEmptyServer();
+        this.finishLoading();
+      }
+    });
+  }
+
+  private restoreUserFromStorage(): void {
+    const savedUser =
+      JSON.parse(localStorage.getItem('currentUser') || 'null') ||
+      JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+
+    if (!savedUser) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    this.currentUser = {
+      fullName: savedUser.fullName || savedUser.name || savedUser.userName || savedUser.username || 'Utilisateur',
+      username: savedUser.username || savedUser.userName || savedUser.name || 'user1',
+      role: savedUser.role || 'Utilisateur',
+      email: savedUser.email || 'user@bank.com',
+      status: savedUser.status || 'Connecte',
+      image: savedUser.image || savedUser.photo || 'assets/profil.png'
+    };
+  }
+
+  private mapApiToUi(server: ServerApi): UserServerItem {
+    const status = this.normalizeStatus(server.status);
+
+    return {
+      id: server.id,
+      name: server.name || 'Serveur',
+      ip: server.ipAddress || '-',
+      port: server.port ?? 0,
+      os: server.os || server.system || 'N/A',
+      status,
+      lastCheck: this.formatTime(server.lastCheck),
+      location: 'Datacenter A',
+      cpu: status === 'Offline' ? 0 : 40,
+      ram: status === 'Offline' ? 0 : 50,
+      storage: status === 'Offline' ? 0 : 45,
+      uptime: status === 'Offline' ? 'Indisponible' : 'Actif',
+      owner: this.currentUser.fullName || 'Utilisateur',
+      description: 'Serveur supervise par votre compte utilisateur.'
+    };
+  }
+
+  private normalizeStatus(status?: string): UserServerStatus {
+    const value = (status || '').toLowerCase();
+
+    if (value.includes('warn')) return 'Warning';
+    if (value.includes('off') || value.includes('down') || value.includes('stop')) return 'Offline';
+    if (value.includes('maint')) return 'Maintenance';
+    return 'Online';
+  }
+
+  private formatTime(value?: string): string {
+    if (!value) return '--:--';
+
+    if (/^\d{2}:\d{2}$/.test(value)) {
+      return value;
+    }
+
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      return '--:--';
+    }
+
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
+  private createEmptyServer(): UserServerItem {
+    return {
+      name: '-',
+      ip: '-',
+      port: 0,
+      os: '-',
+      status: 'Offline',
+      lastCheck: '--:--',
+      location: '-',
+      cpu: 0,
+      ram: 0,
+      storage: 0,
+      uptime: '-',
+      owner: '-',
+      description: '-'
+    };
+  }
+
+  private finishLoading(): void {
+    this.loading = false;
+    this.cdr.detectChanges();
   }
 }

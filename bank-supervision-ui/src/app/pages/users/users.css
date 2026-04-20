@@ -1,5 +1,4 @@
-html,
-body {
+html, body {
   height: 100%;
   margin: 0;
 }
@@ -11,6 +10,16 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sidebarReveal {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .app {
@@ -37,7 +46,7 @@ body {
   padding: 18px 16px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255,255,255,.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   animation: sidebarReveal .7s ease;
   overflow: hidden;
 
@@ -50,7 +59,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255,255,255,.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   animation: fadeUp .6s ease both;
 }
 
@@ -272,7 +281,7 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
@@ -397,6 +406,54 @@ body {
 
 .table-custom tbody tr:hover td {
   background: #687d92 !important;
+}
+
+.table-pagination {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: rgba(10, 25, 43, .38);
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: .2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.page-btn:hover {
+  background: rgba(255,255,255,.12);
+  transform: translateY(-1px);
+}
+
+.page-btn.active {
+  background: linear-gradient(180deg, #2780ff 0%, #1569e8 100%);
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(21,105,232,.30);
+}
+
+.page-btn:disabled {
+  opacity: .40;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nav-btn {
+  min-width: 38px;
 }
 
 .muted {
@@ -539,6 +596,13 @@ body {
   color: rgba(255, 255, 255, 0.55);
 }
 
+.form-control[readonly],
+.form-control:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .check {
   margin-top: 10px;
   display: flex;
@@ -551,6 +615,30 @@ body {
 .delete-text {
   opacity: 0.9;
   margin: 6px 0 12px;
+}
+
+/* =========================
+   MODAL VALIDATION ERROR
+========================= */
+.modal-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(214, 40, 40, 0.18);
+  border: 1px solid rgba(214, 40, 40, 0.55);
+  border-radius: 10px;
+  color: #ff6b6b;
+  font-size: 0.88rem;
+  font-weight: 700;
+  animation: fadeUp 0.2s ease both;
+}
+
+.modal-error-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  color: #ff6b6b;
 }
 
 .modal-actions {

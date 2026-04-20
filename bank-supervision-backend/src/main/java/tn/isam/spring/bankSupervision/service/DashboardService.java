@@ -2,7 +2,7 @@ package tn.isam.spring.bankSupervision.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import tn.isam.spring.bankSupervision.auth.request.DashboardRequest;
+import tn.isam.spring.bankSupervision.dto.request.DashboardRequest;
 import tn.isam.spring.bankSupervision.entity.Application;
 import tn.isam.spring.bankSupervision.entity.Metric;
 import tn.isam.spring.bankSupervision.entity.Server;

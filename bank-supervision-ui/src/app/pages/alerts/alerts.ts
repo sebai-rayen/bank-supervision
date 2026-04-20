@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { AlertsService, type AlertSeverity, type AdminAlertsResponse, type IncomingAlertDto, type ReceivedAlertDto } from '../../services/alerts.service';
 
-type AlertSeverity = 'Warning' | 'Critical';
 type AlertsTab = 'received' | 'send';
 
 interface IncomingAlert {
@@ -11,6 +12,7 @@ interface IncomingAlert {
   subject: string;
   message: string;
   time: string;
+  severity: AlertSeverity;
 }
 
 interface ReceivedAlert {
@@ -22,6 +24,7 @@ interface ReceivedAlert {
   time: string;
   read: boolean;
   isNew: boolean;
+  message: string;
 }
 
 interface SendForm {
@@ -50,67 +53,19 @@ interface SentAlert {
   templateUrl: './alerts.html',
   styleUrls: ['./alerts.css']
 })
-export class Alerts {
+export class Alerts implements OnInit, OnDestroy {
+  private alertsService = inject(AlertsService);
+  private subscription?: Subscription;
+
   activeTab: AlertsTab = 'received';
 
-  incoming: IncomingAlert = {
-    server: 'SRV-02',
-    subject: 'Critical RAM Alert',
-    message: 'High memory usage detected on SRV-02. Immediate verification recommended.',
-    time: '10:15'
-  };
+  isLoading = false;
+  loadError = '';
 
-  alerts: ReceivedAlert[] = [
-    {
-      id: 1,
-      server: 'SRV-01',
-      type: 'CPU',
-      severity: 'Warning',
-      email: 'admin@bank.com',
-      time: '09:40',
-      read: false,
-      isNew: true
-    },
-    {
-      id: 2,
-      server: 'SRV-02',
-      type: 'RAM',
-      severity: 'Critical',
-      email: 'ops@bank.com',
-      time: '10:15',
-      read: false,
-      isNew: true
-    },
-    {
-      id: 3,
-      server: 'SRV-03',
-      type: 'Disk',
-      severity: 'Warning',
-      email: 'infra@bank.com',
-      time: '10:32',
-      read: true,
-      isNew: false
-    },
-    {
-      id: 4,
-      server: 'SRV-04',
-      type: 'Network',
-      severity: 'Critical',
-      email: 'security@bank.com',
-      time: '11:05',
-      read: false,
-      isNew: false
-    }
-  ];
+  incoming: IncomingAlert | null = null;
+  alerts: ReceivedAlert[] = [];
 
-  serverOptions: string[] = [
-    'SRV-01',
-    'SRV-02',
-    'SRV-03',
-    'SRV-04',
-    'SRV-05',
-    'SRV-06'
-  ];
+  serverOptions: string[] = [];
 
   userOptions: string[] = [
     'admin@bank.com',
@@ -140,35 +95,48 @@ export class Alerts {
     this.activeTab = tab;
     this.formMessage = '';
     this.formError = false;
+
+    if (tab === 'received') {
+      this.refreshAlerts();
+    }
+  }
+
+  ngOnInit(): void {
+    this.refreshAlerts();
+    this.subscription = this.alertsService.pollAdminAlerts(7000).subscribe({
+      next: (data) => this.applyBackendData(data),
+      error: () => {
+        // keep showing previous data; surface error on manual refresh only
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.subscription?.unsubscribe();
   }
 
   resetIncoming(): void {
-    this.incoming = {
-      server: '--',
-      subject: 'No recent alert',
-      message: 'No incoming email alert available.',
-      time: '--:--'
-    };
+    this.refreshAlerts();
   }
 
   markAllRead(): void {
-    this.alerts = this.alerts.map(alert => ({
-      ...alert,
-      read: true,
-      isNew: false
-    }));
+    const current = this.readIds;
+    this.alerts.forEach((a) => current.add(a.id));
+    this.readIds = current;
+    this.applyReadState();
   }
 
   clearAll(): void {
     this.alerts = [];
+    this.incoming = null;
+    this.serverOptions = [];
   }
 
   ack(id: number): void {
-    this.alerts = this.alerts.map(alert =>
-      alert.id === id
-        ? { ...alert, read: true, isNew: false }
-        : alert
-    );
+    const current = this.readIds;
+    current.add(id);
+    this.readIds = current;
+    this.applyReadState();
   }
 
   exportReceivedAlerts(): void {
@@ -226,6 +194,7 @@ export class Alerts {
       severity: this.sendForm.severity,
       email: this.sendForm.recipient,
       time,
+      message: this.sendForm.message.trim(),
       read: false,
       isNew: true
     };
@@ -237,6 +206,8 @@ export class Alerts {
       subject: this.sendForm.subject.trim(),
       message: this.sendForm.message.trim(),
       time
+      ,
+      severity: this.sendForm.severity
     };
 
     this.formError = false;
@@ -262,5 +233,80 @@ export class Alerts {
       subject: '',
       message: ''
     };
+  }
+
+  private refreshAlerts(): void {
+    this.isLoading = true;
+    this.loadError = '';
+
+    this.alertsService.getAdminAlerts().subscribe({
+      next: (data) => this.applyBackendData(data),
+      error: () => {
+        this.loadError = 'Failed to load alerts from backend.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  private applyBackendData(data: AdminAlertsResponse): void {
+    const received = (data.alerts ?? []).map((a: ReceivedAlertDto) => ({
+      id: a.id,
+      server: a.server,
+      type: a.type,
+      severity: a.severity,
+      email: a.email,
+      time: a.time,
+      message: a.message,
+      read: false,
+      isNew: false
+    }));
+
+    this.alerts = received;
+
+    this.incoming = data.latest
+      ? this.mapIncoming(data.latest)
+      : null;
+
+    this.serverOptions = Array.from(new Set(received.map((a) => a.server))).sort();
+
+    this.applyReadState();
+
+    this.isLoading = false;
+  }
+
+  private mapIncoming(latest: IncomingAlertDto): IncomingAlert {
+    return {
+      server: latest.server,
+      subject: latest.subject,
+      message: latest.message,
+      time: latest.time,
+      severity: latest.severity
+    };
+  }
+
+  private applyReadState(): void {
+    const read = this.readIds;
+    this.alerts = this.alerts.map((a) => {
+      const isRead = read.has(a.id);
+      return {
+        ...a,
+        read: isRead,
+        isNew: !isRead
+      };
+    });
+  }
+
+  private get readIds(): Set<number> {
+    try {
+      const raw = localStorage.getItem('adminAlerts.readIds');
+      const parsed = raw ? (JSON.parse(raw) as number[]) : [];
+      return new Set(parsed.filter((v) => typeof v === 'number'));
+    } catch {
+      return new Set();
+    }
+  }
+
+  private set readIds(value: Set<number>) {
+    localStorage.setItem('adminAlerts.readIds', JSON.stringify(Array.from(value)));
   }
 }

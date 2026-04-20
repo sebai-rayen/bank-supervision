@@ -91,7 +91,7 @@
         </div>
 
         <div class="top-search">
-          <input type="text" placeholder="Rechercher des utilisateurs..." [(ngModel)]="query" />
+          <input type="text" placeholder="Rechercher des utilisateurs..." [(ngModel)]="query" (ngModelChange)="currentPage = 1" />
         </div>
 
         <div class="top-user">
@@ -122,11 +122,14 @@
             </button>
           </div>
 
+          <div class="alert alert-info mt-3" *ngIf="loading">Chargement...</div>
+          <div class="alert alert-danger mt-3" *ngIf="error">{{ error }}</div>
+
           <!-- Filters -->
           <div class="filters">
             <div class="filter">
               <div class="filter-label">Rôle</div>
-              <select class="select" [(ngModel)]="filterRole">
+              <select class="select" [(ngModel)]="filterRole" (ngModelChange)="currentPage = 1">
                 <option value="Tous">Tous</option>
                 <option value="Admin">Admin</option>
                 <option value="User">Utilisateur</option>
@@ -135,7 +138,7 @@
 
             <div class="filter">
               <div class="filter-label">Statut</div>
-              <select class="select" [(ngModel)]="filterStatut">
+              <select class="select" [(ngModel)]="filterStatut" (ngModelChange)="currentPage = 1">
                 <option value="Tous">Tous</option>
                 <option value="Actif">Actif</option>
                 <option value="Désactivé">Désactivé</option>
@@ -156,7 +159,7 @@
               </thead>
 
               <tbody>
-                <tr *ngFor="let u of filteredUsers()">
+                <tr *ngFor="let u of paginatedUsers">
                   <td class="fw-semibold">{{ u.nom }}</td>
                   <td class="muted">{{ u.email }}</td>
 
@@ -184,12 +187,31 @@
                 </tr>
               </tbody>
             </table>
+
+            <div class="table-pagination" *ngIf="filteredUsers().length > itemsPerPage">
+              <button class="page-btn nav-btn" type="button" (click)="prevPage()" [disabled]="currentPage === 1">
+                &lt;
+              </button>
+
+              <button
+                class="page-btn"
+                type="button"
+                *ngFor="let page of pages"
+                [class.active]="page === currentPage"
+                (click)="goToPage(page)">
+                {{ page }}
+              </button>
+
+              <button class="page-btn nav-btn" type="button" (click)="nextPage()" [disabled]="currentPage === totalPages">
+                &gt;
+              </button>
+            </div>
           </div>
         </section>
 
         <!-- Backdrop -->
         <div class="modal-backdrop" *ngIf="showAdd || showEdit || showDelete"
-             (click)="showAdd=false; showEdit=false; showDelete=false"></div>
+             (click)="closeAdd(); closeEdit(); closeDelete()"></div>
 
         <!-- ADD MODAL -->
         <div class="modal-card" *ngIf="showAdd">
@@ -203,7 +225,7 @@
             <input class="form-control" [(ngModel)]="addForm.nom" placeholder="Utilisateur 1" />
 
             <label class="form-label">E-mail</label>
-            <input class="form-control" [(ngModel)]="addForm.email" placeholder="user1@bank.tn" />
+            <input class="form-control" type="email" [(ngModel)]="addForm.email" placeholder="user1@bank.tn" />
 
             <label class="form-label">Rôle</label>
             <select class="form-control" [(ngModel)]="addForm.role">
@@ -218,6 +240,10 @@
               <input type="checkbox" [checked]="addForm.statut === 'Actif'" (change)="onActiveToggle(addForm, $event)" />
               <span>Compte actif</span>
             </label>
+
+            <div class="modal-error" *ngIf="addError">
+              <span class="modal-error-icon">&#9888;</span> {{ addError }}
+            </div>
 
             <div class="modal-actions">
               <button class="btn-cancel-modern" type="button" (click)="closeAdd()">Annuler</button>
@@ -238,10 +264,10 @@
             <input class="form-control" [(ngModel)]="editForm.nom" />
 
             <label class="form-label">E-mail</label>
-            <input class="form-control" [(ngModel)]="editForm.email" />
+            <input class="form-control" type="email" [(ngModel)]="editForm.email" />
 
-            <label class="form-label">Rôle</label>
-            <select class="form-control" [(ngModel)]="editForm.role">
+            <label class="form-label">Rôle (non modifiable)</label>
+            <select class="form-control" [(ngModel)]="editForm.role" disabled>
               <option value="Admin">Admin</option>
               <option value="User">Utilisateur</option>
             </select>
@@ -250,6 +276,10 @@
               <input type="checkbox" [checked]="editForm.statut === 'Actif'" (change)="onActiveToggle(editForm, $event)" />
               <span>Compte actif</span>
             </label>
+
+            <div class="modal-error" *ngIf="editError">
+              <span class="modal-error-icon">&#9888;</span> {{ editError }}
+            </div>
 
             <div class="modal-actions">
               <button class="btn-cancel-modern" type="button" (click)="closeEdit()">Annuler</button>
@@ -268,6 +298,10 @@
           <div class="modal-body">
             <div class="delete-text">
               Êtes-vous sûr de vouloir supprimer <b>{{ deleteTarget?.nom }}</b> ?
+            </div>
+
+            <div class="modal-error" *ngIf="deleteError">
+              <span class="modal-error-icon">&#9888;</span> {{ deleteError }}
             </div>
 
             <div class="modal-actions">

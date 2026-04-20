@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import tn.isam.spring.bankSupervision.entity.Server;
-import tn.isam.spring.bankSupervision.request.ServerRequest;
+import tn.isam.spring.bankSupervision.dto.request.ServerRequest;
 import tn.isam.spring.bankSupervision.repository.ServerRepository;
 
 import java.time.LocalDateTime;

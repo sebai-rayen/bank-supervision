@@ -71,10 +71,9 @@ export class Login implements OnInit {
       next: (res) => {
         console.log('Résultat login :', res);
 
-        // selon ton backend actuel
-        const accessToken = res.access_token || res.access_token;
-        const refreshToken = res.refresh_token || res.refresh_token;
-        const tokenType = res.token_type || res.token_type;
+        const accessToken = (res as any).access_token ?? (res as any).accessToken;
+        const refreshToken = (res as any).refresh_token ?? (res as any).refreshToken;
+        const tokenType = (res as any).token_type ?? (res as any).tokenType;
 
         const decodedToken = this.decodeJwt(accessToken);
 
@@ -84,7 +83,7 @@ export class Login implements OnInit {
           token: accessToken,
           refreshToken: refreshToken,
           tokenType: tokenType,
-          role: res.role || decodedToken?.role || 'USER'
+          role: (res as any).role || decodedToken?.role || decodedToken?.roleType || 'USER'
         };
 
         if (this.rememberMe) {
@@ -99,12 +98,14 @@ export class Login implements OnInit {
         this.router.navigate([targetRoute]);
       },
       error: (err) => {
-        const message =
-          err?.status === 400 && err.error?.message
-            ? err.error.message
-            : 'Mail ou mot de passe incorrect';
+        const apiMessage =
+          typeof err?.error === 'string' ? err.error : err?.error?.message;
 
-        this.error = message;
+        this.error =
+          apiMessage ||
+          (err?.status === 403
+            ? 'Compte désactivé'
+            : 'Mail ou mot de passe incorrect');
         this.cdr.markForCheck();
       }
     });

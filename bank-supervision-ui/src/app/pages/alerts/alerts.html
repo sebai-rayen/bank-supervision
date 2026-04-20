@@ -139,7 +139,7 @@
                     <span class="bell-dot"></span>
                   </span>
                   <span>Incoming Email Alert</span>
-                  <span class="tag-new">NEW</span>
+                  <span class="tag-new" *ngIf="incoming">NEW</span>
                 </div>
                 <div class="incoming-sub">Last alert received via email</div>
               </div>
@@ -150,27 +150,55 @@
               </button>
             </div>
 
-            <div class="incoming-grid">
-              <div class="incoming-item">
-                <div class="incoming-label">Server</div>
-                <div class="incoming-value">{{ incoming.server }}</div>
-              </div>
+            <div class="form-feedback error" *ngIf="loadError">{{ loadError }}</div>
 
-              <div class="incoming-item">
-                <div class="incoming-label">Subject</div>
-                <div class="incoming-value">{{ incoming.subject }}</div>
-              </div>
+            <ng-container *ngIf="incoming as inc; else noIncoming">
+              <div class="incoming-grid">
+                <div class="incoming-item">
+                  <div class="incoming-label">Server</div>
+                  <div class="incoming-value">{{ inc.server }}</div>
+                </div>
 
-              <div class="incoming-item incoming-item-wide">
-                <div class="incoming-label">Message</div>
-                <div class="incoming-value">{{ incoming.message }}</div>
-              </div>
+                <div class="incoming-item">
+                  <div class="incoming-label">Subject</div>
+                  <div class="incoming-value">{{ inc.subject }}</div>
+                </div>
 
-              <div class="incoming-item incoming-item-time">
-                <div class="incoming-label">Time</div>
-                <div class="incoming-value">{{ incoming.time }}</div>
+                <div class="incoming-item incoming-item-wide">
+                  <div class="incoming-label">Message</div>
+                  <div class="incoming-value">{{ inc.message }}</div>
+                </div>
+
+                <div class="incoming-item incoming-item-time">
+                  <div class="incoming-label">Time</div>
+                  <div class="incoming-value">{{ inc.time }}</div>
+                </div>
               </div>
-            </div>
+            </ng-container>
+
+            <ng-template #noIncoming>
+              <div class="incoming-grid">
+                <div class="incoming-item">
+                  <div class="incoming-label">Server</div>
+                  <div class="incoming-value">--</div>
+                </div>
+
+                <div class="incoming-item">
+                  <div class="incoming-label">Subject</div>
+                  <div class="incoming-value">No recent alert</div>
+                </div>
+
+                <div class="incoming-item incoming-item-wide">
+                  <div class="incoming-label">Message</div>
+                  <div class="incoming-value">No incoming email alert available.</div>
+                </div>
+
+                <div class="incoming-item incoming-item-time">
+                  <div class="incoming-label">Time</div>
+                  <div class="incoming-value">--:--</div>
+                </div>
+              </div>
+            </ng-template>
           </section>
 
           <section class="panel pro-panel">
