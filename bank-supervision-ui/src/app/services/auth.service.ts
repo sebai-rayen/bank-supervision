@@ -12,6 +12,7 @@ export interface RegistrationRequest {
   email: string;
   password: string;
   roleType?: string;
+  active?: boolean;
 }
 
 export interface RefreshRequest {
@@ -22,8 +23,8 @@ export interface AuthenticationResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
-  role: string;
-  name: string;
+  role?: string;
+  name?: string;
 }
 
 @Injectable({
@@ -43,9 +44,9 @@ export class AuthService {
   }
 
   /** Register */
-  register(request: RegistrationRequest): Observable<AuthenticationResponse> {
+  register(request: RegistrationRequest): Observable<void> {
     console.log('[AuthService] register request', request);
-    return this.http.post<AuthenticationResponse>(`${this.baseUrl}/register`, request).pipe(
+    return this.http.post<void>(`${this.baseUrl}/register`, request).pipe(
       tap(res => console.log('[AuthService] register response', res))
     );
   }
