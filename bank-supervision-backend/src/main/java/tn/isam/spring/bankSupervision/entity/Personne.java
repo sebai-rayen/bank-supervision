@@ -21,8 +21,8 @@ public abstract class Personne implements UserDetails {
     private String password;
     private String nom;
     private String email;
-
-    // Getters & Setters
+    @Column(nullable = true)
+    private Boolean active = true;
 
     // كل subclass يحدد صلاحياته
     @Override
@@ -30,5 +30,9 @@ public abstract class Personne implements UserDetails {
 
     String getPass(){
         return password;
+    }
+
+    public boolean isActive() {
+        return this.active == null || this.active;
     }
 }

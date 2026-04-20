@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.isam.spring.bankSupervision.entity.Server;
-import tn.isam.spring.bankSupervision.request.ServerRequest;
+import tn.isam.spring.bankSupervision.dto.request.ServerRequest;
 import tn.isam.spring.bankSupervision.service.ServerService;
 
 import java.util.List;

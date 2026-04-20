@@ -52,7 +52,7 @@ public class Admin extends Personne {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return this.isActive();
     }
 
     // Getters & Setters

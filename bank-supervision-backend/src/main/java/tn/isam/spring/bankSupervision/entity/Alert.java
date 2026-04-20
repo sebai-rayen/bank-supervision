@@ -2,10 +2,14 @@ package tn.isam.spring.bankSupervision.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Getter
+@Setter
 public class Alert {
 
     @Id
@@ -32,5 +36,5 @@ public class Alert {
     @JoinColumn(name = "destinataire_id")
     private Personne destinataire;
 
-    // Getters & Setters
+    // Getters & Setters via Lombok
 }

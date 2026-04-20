@@ -17,6 +17,7 @@ public class JwtService {
     public static final String TOKEN_TYPE = "token_type";
     public static final String CLAIM_NAME = "name";
     public static final String CLAIM_EMAIL = "email";
+    public static final String CLAIM_ROLE = "role";
 
     private final PrivateKey privateKey;
     private final PublicKey publicKey;
@@ -32,20 +33,22 @@ public class JwtService {
         this.publicKey = KeyUtils.loadPublicKey("keys.local-only/public_key.pem");
     }
 
-    public String generateAccessToken(String username, String name, String email) {
+    public String generateAccessToken(String username, String name, String email, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(TOKEN_TYPE, "ACCESS_TOKEN");
         claims.put(CLAIM_NAME, name);
         claims.put(CLAIM_EMAIL, email);
+        claims.put(CLAIM_ROLE, role);
 
         return buildToken(username, claims, accessTokenExpiration);
     }
 
-    public String generateRefreshToken(String username, String name, String email) {
+    public String generateRefreshToken(String username, String name, String email, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(TOKEN_TYPE, "REFRESH_TOKEN");
         claims.put(CLAIM_NAME, name);
         claims.put(CLAIM_EMAIL, email);
+        claims.put(CLAIM_ROLE, role);
 
         return buildToken(username, claims, refreshTokenExpiration);
     }
@@ -75,6 +78,10 @@ public class JwtService {
 
     public String extractEmail(String token) {
         return extractClaims(token).get(CLAIM_EMAIL, String.class);
+    }
+
+    public String extractRole(String token) {
+        return extractClaims(token).get(CLAIM_ROLE, String.class);
     }
 
     private boolean isTokenExpired(String token) {
@@ -107,7 +114,8 @@ public class JwtService {
         String username = claims.getSubject();
         String name = claims.get(CLAIM_NAME, String.class);
         String email = claims.get(CLAIM_EMAIL, String.class);
+        String role = claims.get(CLAIM_ROLE, String.class);
 
-        return generateAccessToken(username, name, email);
+        return generateAccessToken(username, name, email, role);
     }
 }
