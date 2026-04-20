@@ -1,23 +1,19 @@
 package tn.isam.spring.bankSupervision.auth;
 
-import tn.isam.spring.bankSupervision.auth.response.AuthenticationResponse;
-import tn.isam.spring.bankSupervision.auth.request.AuthenticationRequest;
-import tn.isam.spring.bankSupervision.auth.request.RegistrationRequest;
-import tn.isam.spring.bankSupervision.auth.request.RefreshRequest;
+import tn.isam.spring.bankSupervision.dto.response.AuthenticationResponse;
+import tn.isam.spring.bankSupervision.dto.request.AuthenticationRequest;
+import tn.isam.spring.bankSupervision.dto.request.RegistrationRequest;
+import tn.isam.spring.bankSupervision.dto.request.RefreshRequest;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-
 public class AuthenticationController {
 
     private final AuthenticationService service;

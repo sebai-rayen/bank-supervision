@@ -2,22 +2,22 @@ package tn.isam.spring.bankSupervision.auth;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
-import tn.isam.spring.bankSupervision.auth.request.RefreshRequest;
-import tn.isam.spring.bankSupervision.auth.request.AuthenticationRequest;
-import tn.isam.spring.bankSupervision.auth.request.RegistrationRequest;
-import tn.isam.spring.bankSupervision.auth.response.AuthenticationResponse;
+import tn.isam.spring.bankSupervision.dto.request.RefreshRequest;
+import tn.isam.spring.bankSupervision.dto.request.AuthenticationRequest;
+import tn.isam.spring.bankSupervision.dto.request.RegistrationRequest;
+import tn.isam.spring.bankSupervision.dto.response.AuthenticationResponse;
 
 import tn.isam.spring.bankSupervision.entity.Admin;
-import tn.isam.spring.bankSupervision.entity.User;
-import tn.isam.spring.bankSupervision.mapper.PersonneMapper;
 import tn.isam.spring.bankSupervision.security.JwtService;
 import tn.isam.spring.bankSupervision.entity.Personne;
+import tn.isam.spring.bankSupervision.entity.User;
 import tn.isam.spring.bankSupervision.repository.PersonneRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,11 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService {
 
     private final AuthenticationManager authenticationManager;
-    private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final PersonneRepository repository;
-
-    private final PersonneMapper mapper;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthenticationResponse login(final AuthenticationRequest request) {
         log.info("[Login] Attempt for email: {}", request.getEmail());
@@ -50,34 +48,42 @@ public class AuthenticationService {
             );
 
             // Authentication successful
-            Personne user = (Personne) auth.getPrincipal();
-            log.info("[Login] Authentication successful for: {}", user.getEmail());
+            Personne personne = (Personne) auth.getPrincipal();
+            log.info("[Login] Authentication successful for: {}", personne.getEmail());
+            final String role = (personne instanceof Admin) ? "ADMIN" : "USER";
 
             // Generate JWT tokens
             String accessToken = jwtService.generateAccessToken(
-                    user.getUsername(),
-                    user.getNom(),
-                    user.getEmail()
+                    personne.getUsername(),
+                    personne.getNom(),
+                    personne.getEmail(),
+                    role
             );
 
             String refreshToken = jwtService.generateRefreshToken(
-                    user.getUsername(),
-                    user.getNom(),
-                    user.getEmail()
+                    personne.getUsername(),
+                    personne.getNom(),
+                    personne.getEmail(),
+                    role
             );
 
-            log.info("[Login] Tokens generated for: {}", user.getEmail());
+            log.info("[Login] Tokens generated for: {}", personne.getEmail());
 
             return AuthenticationResponse.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
                     .tokenType("Bearer")
+                    .role(role)
                     .build();
 
         } catch (BadCredentialsException ex) {
             log.warn("[Login] Bad credentials for email: {}", request.getEmail());
             // HTTP 401
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email ou mot de passe incorrect");
+
+        } catch (DisabledException ex) {
+            log.warn("[Login] Disabled account for email: {}", request.getEmail());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Compte désactivé");
 
         } catch (InternalAuthenticationServiceException ex) {
             // This usually wraps UsernameNotFoundException
@@ -95,27 +101,21 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public void register(RegistrationRequest request) {
-
+    public Personne register(RegistrationRequest request) {
         if (repository.existsByEmail(request.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ce compte existe d�j�");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ce compte existe déjà");
         }
 
-        Personne personne;
+        final Personne personne = new User();
 
-        if ("ADMIN".equalsIgnoreCase(request.getRoleType())) {
-            personne = new Admin();
-        } else {
-            personne = new User();
-        }
-
-        // تعيين بيانات الشخص
         personne.setNom(request.getName());
         personne.setEmail(request.getEmail());
         personne.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // تخزين في قاعدة البيانات (جدول Personne أو جدول Users)
-        repository.save(personne);
+        boolean active = request.getActive() == null || request.getActive();
+        personne.setActive(active);
+
+        return repository.save(personne);
     }
 
     public AuthenticationResponse refreshToken(final RefreshRequest req) {
