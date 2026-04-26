@@ -418,10 +418,56 @@ body {
   padding: 0 14px;
   margin-bottom: 16px;
   outline: none;
+  font-weight: 700;
 }
 
 .form-control::placeholder {
   color: rgba(255, 255, 255, 0.50);
+}
+
+/* Make native selects clearly visible + readable */
+select.form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: 44px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(255,255,255,.80) 50%),
+    linear-gradient(135deg, rgba(255,255,255,.80) 50%, transparent 50%),
+    linear-gradient(to right, rgba(255,255,255,.12), rgba(255,255,255,.12));
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%,
+    calc(100% - 44px) 50%;
+  background-size: 6px 6px, 6px 6px, 1px 20px;
+  background-repeat: no-repeat;
+}
+
+select.form-control:focus {
+  border-color: rgba(47, 128, 255, 0.85);
+  box-shadow: 0 0 0 3px rgba(47, 128, 255, 0.20);
+}
+
+select.form-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* Dropdown list colors (best-effort across browsers) */
+select.form-control option {
+  background: #102542;
+  color: #ffffff;
+}
+
+.select-hint {
+  margin-top: -10px;
+  margin-bottom: 14px;
+  color: rgba(217, 229, 248, 0.78);
+  font-size: 0.88rem;
 }
 
 .modal-actions {
@@ -478,4 +524,53 @@ body {
     width: 100%;
     min-width: 100%;
   }
+}
+
+/* PAGINATION */
+.table-pagination {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: rgba(10, 25, 43, .38);
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: .2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.page-btn:hover {
+  background: rgba(255,255,255,.12);
+  transform: translateY(-1px);
+}
+
+.page-btn.active {
+  background: linear-gradient(180deg, #2780ff 0%, #1569e8 100%);
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(21,105,232,.30);
+}
+
+.page-btn:disabled {
+  opacity: .40;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nav-btn {
+  min-width: 38px;
 }

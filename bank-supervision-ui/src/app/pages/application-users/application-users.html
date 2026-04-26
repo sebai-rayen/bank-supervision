@@ -92,7 +92,8 @@
           <input
             type="text"
             placeholder="Rechercher une application..."
-            [(ngModel)]="searchTerm" />
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="currentPage = 1" />
         </div>
 
         <div class="top-user" (click)="toggleProfileCard($event)">
@@ -191,7 +192,7 @@
 
                 <tbody>
                   <tr
-                    *ngFor="let app of applicationsFiltrees"
+                    *ngFor="let app of paginatedApplications"
                     class="clickable-row"
                     [class.active-row]="selectedApplication.id === app.id"
                     (click)="selectApplication(app)">
@@ -216,11 +217,38 @@
                     <td class="text-end muted">{{ app.heure }}</td>
                   </tr>
 
-                  <tr *ngIf="applicationsFiltrees.length === 0">
+                  <tr *ngIf="paginatedApplications.length === 0">
                     <td colspan="5" class="empty-row">Aucune application trouvée</td>
                   </tr>
                 </tbody>
               </table>
+
+              <div class="table-pagination" *ngIf="applicationsFiltrees.length > itemsPerPage">
+                <button
+                  class="page-btn nav-btn"
+                  type="button"
+                  (click)="prevPage()"
+                  [disabled]="currentPage === 1">
+                  &lt;
+                </button>
+
+                <button
+                  class="page-btn"
+                  type="button"
+                  *ngFor="let page of pages"
+                  [class.active]="page === currentPage"
+                  (click)="goToPage(page)">
+                  {{ page }}
+                </button>
+
+                <button
+                  class="page-btn nav-btn"
+                  type="button"
+                  (click)="nextPage()"
+                  [disabled]="currentPage === totalPages">
+                  &gt;
+                </button>
+              </div>
             </div>
           </section>
 
@@ -364,6 +392,10 @@
           </div>
 
           <div class="modal-body">
+            <div class="alert alert-danger py-2 mb-3" *ngIf="errorMessage" style="font-size: 0.85rem;">
+              {{ errorMessage }}
+            </div>
+
             <label class="form-label">Nom de l’application</label>
             <input
               class="form-control"
@@ -371,10 +403,13 @@
               placeholder="Ex: Core Banking" />
 
             <label class="form-label">Serveur</label>
-            <input
-              class="form-control"
-              [(ngModel)]="form.server"
-              placeholder="Ex: SRV-06" />
+            <select class="form-control" [(ngModel)]="form.serverId">
+              <option [ngValue]="null" disabled selected>Sélectionner un serveur</option>
+              <option *ngFor="let s of serverOptions" [ngValue]="s.id">{{ s.name }}</option>
+            </select>
+            <div class="form-text mt-1 text-muted" *ngIf="serversLoading" style="font-size: 0.75rem;">
+              <i class="bi bi-arrow-repeat spin"></i> Chargement des serveurs...
+            </div>
 
             <label class="form-label">Version</label>
             <input
