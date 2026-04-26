@@ -5,7 +5,6 @@ import org.springframework.data.repository.query.Param;
 import tn.isam.spring.bankSupervision.entity.Alert;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface AlertRepository extends JpaRepository<Alert, Long> {
 
@@ -27,4 +26,14 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             order by a.date desc
             """)
     List<Alert> findNonHealthyAlerts(@Param("healthy") String healthyLower);
+
+    List<Alert> findAllByDestinataireEmailIgnoreCaseOrderByDateDesc(String email);
+
+    @Query("""
+            select a
+            from Alert a
+            where a.destinataire is not null
+            order by a.date desc
+            """)
+    List<Alert> findSentAlertsOrderByDateDesc();
 }

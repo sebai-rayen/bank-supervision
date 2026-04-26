@@ -12,7 +12,8 @@ import java.util.Collection;
 @Setter
 @Getter
 @Entity
-@Inheritance
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.STRING)
 public abstract class Personne implements UserDetails {
 
     @Id
