@@ -24,11 +24,14 @@ export class AdminDashboard implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
 
   private nameRotateHandle?: ReturnType<typeof setInterval>;
+  private readonly nameRotateIntervalMs = 10000;
   private selectedIndex = 0;
   private baseMetricLocked = false;
   private serverWindowStart = 0;
   private appWindowStart = 0;
   private destroy$ = new Subject<void>();
+  private serverSectionPaused = false;
+  private pendingServerSectionData?: DashboardResponse;
 
   stats: DashboardStats = {
     totalServers: 0,
@@ -59,15 +62,27 @@ export class AdminDashboard implements OnInit, OnDestroy {
           this.finishLoading();
         }
       });
-    this.nameRotateHandle = setInterval(() => this.rotateServerName(), 10000);
+    this.startNameRotation();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.nameRotateHandle) {
-      clearInterval(this.nameRotateHandle);
+    this.stopNameRotation();
+  }
+
+  pauseServerAutoRotate(): void {
+    this.serverSectionPaused = true;
+    this.stopNameRotation();
+  }
+
+  resumeServerAutoRotate(): void {
+    this.serverSectionPaused = false;
+    if (this.pendingServerSectionData) {
+      this.applyServerSectionData(this.pendingServerSectionData);
+      this.pendingServerSectionData = undefined;
     }
+    this.startNameRotation();
   }
 
   loadDashboard(showLoading = true): void {
@@ -112,32 +127,33 @@ export class AdminDashboard implements OnInit, OnDestroy {
     };
   }
 
+  private startNameRotation(): void {
+    if (this.nameRotateHandle) return;
+    this.nameRotateHandle = setInterval(() => this.rotateServerName(), this.nameRotateIntervalMs);
+  }
+
+  private stopNameRotation(): void {
+    if (!this.nameRotateHandle) return;
+    clearInterval(this.nameRotateHandle);
+    this.nameRotateHandle = undefined;
+  }
+
   private finishLoading(): void {
     this.loading = false;
     this.cdr.detectChanges();
   }
 
   private applyDashboardData(data: DashboardResponse): void {
+    if (this.serverSectionPaused) {
+      this.pendingServerSectionData = data;
+    }
+
     this.stats = {
       totalServers: data.totalServers ?? 0,
       active: data.activeServers ?? 0,
       warnings: data.warningServers ?? 0,
       critical: data.criticalServers ?? 0
     };
-
-    const allServers = data.recentServers ?? [];
-    if (allServers.length > 5) {
-      this.serverWindowStart = (this.serverWindowStart + 5) % allServers.length;
-    } else {
-      this.serverWindowStart = 0;
-    }
-
-    this.rows = this.sliceWindow(allServers, this.serverWindowStart, 5).map((row) => ({
-      server: row.server,
-      ipAddress: row.ipAddress,
-      status: row.status,
-      time: this.formatTime(row.time)
-    }));
 
     const allApplications = data.recentApplications ?? [];
     if (allApplications.length > 5) {
@@ -153,6 +169,28 @@ export class AdminDashboard implements OnInit, OnDestroy {
       time: this.formatTime(app.time)
     }));
 
+    if (!this.serverSectionPaused) {
+      this.applyServerSectionData(data);
+    }
+
+    this.finishLoading();
+  }
+
+  private applyServerSectionData(data: DashboardResponse): void {
+    const allServers = data.recentServers ?? [];
+    if (allServers.length > 5) {
+      this.serverWindowStart = (this.serverWindowStart + 5) % allServers.length;
+    } else {
+      this.serverWindowStart = 0;
+    }
+
+    this.rows = this.sliceWindow(allServers, this.serverWindowStart, 5).map((row) => ({
+      server: row.server,
+      ipAddress: row.ipAddress,
+      status: row.status,
+      time: this.formatTime(row.time)
+    }));
+
     this.serverMetrics = (data.serverMetrics ?? []).map((server) => ({
       name: server.name,
       cpu: this.clampMetric(server.cpu),
@@ -164,8 +202,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
       this.selectedIndex = 0;
       this.baseMetricLocked = true;
     }
-
-    this.finishLoading();
   }
 
   private formatTime(value?: string): string {

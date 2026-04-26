@@ -17,6 +17,8 @@ public class Alert {
     private Long id;
 
     private String type;
+    private String subject;
+    private String severity;
     private String message;
 
     private LocalDateTime date;

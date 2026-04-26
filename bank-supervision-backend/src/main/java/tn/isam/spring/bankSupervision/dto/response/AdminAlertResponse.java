@@ -11,6 +11,7 @@ public class AdminAlertResponse {
 
     private IncomingAlert latest;
     private List<ReceivedAlert> alerts;
+    private List<UserAlertResponse> sentAlerts;
 
     @Getter
     @Setter
@@ -31,6 +32,7 @@ public class AdminAlertResponse {
         private String type;
         private String severity;
         private String email;
+        private String subject;
         private String time;
         private String message;
     }

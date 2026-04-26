@@ -145,7 +145,13 @@
         </div>
 
         <!-- CPU / RAM GAUGES UNDER STATS -->
-        <section class="gauges-row" id="server-stats">
+        <section
+          class="gauges-row"
+          id="server-stats"
+          (mouseenter)="pauseServerAutoRotate()"
+          (mouseleave)="resumeServerAutoRotate()"
+          (focusin)="pauseServerAutoRotate()"
+          (focusout)="resumeServerAutoRotate()">
           <div class="gauge-panel">
             <div class="gauge-panel-head">
               <span class="gauge-panel-title">CPU</span>
@@ -221,7 +227,11 @@
         <div class="stack-sections">
 
           <!-- ALERTES -->
-          <section class="panel full-panel">
+          <section class="panel full-panel"
+            (mouseenter)="pauseServerAutoRotate()"
+            (mouseleave)="resumeServerAutoRotate()"
+            (focusin)="pauseServerAutoRotate()"
+            (focusout)="resumeServerAutoRotate()">
             <div class="panel-head">
               <div>
                 <div class="panel-title">Alertes récentes</div>

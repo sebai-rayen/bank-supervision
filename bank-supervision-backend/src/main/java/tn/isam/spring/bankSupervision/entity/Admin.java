@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Entity
+@DiscriminatorValue("Admin")
 public class Admin extends Personne {
 
 
