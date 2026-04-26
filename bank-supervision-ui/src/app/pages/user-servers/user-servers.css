@@ -463,6 +463,23 @@ html, body {
   font-size: .92rem;
 }
 
+.panel-state,
+.panel-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  font-weight: 800;
+  font-size: 0.92rem;
+}
+
+.panel-error {
+  border-color: rgba(214, 40, 40, 0.55);
+  background: rgba(214, 40, 40, 0.16);
+  color: #ffb3b3;
+}
+
 .table-wrap {
   margin-top: 12px;
   border-radius: 16px;

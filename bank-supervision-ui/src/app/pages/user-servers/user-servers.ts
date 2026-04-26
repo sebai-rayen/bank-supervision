@@ -69,7 +69,8 @@ export class UserServers implements OnInit {
   ngOnInit(): void {
     if (!this.isBrowser) return;
 
-    this.restoreUserFromStorage();
+    const hasUser = this.restoreUserFromStorage();
+    if (!hasUser) return;
     this.loadServers();
   }
 
@@ -184,7 +185,15 @@ export class UserServers implements OnInit {
       },
       error: (error) => {
         console.error('Erreur chargement user servers :', error);
-        this.errorMessage = 'Impossible de charger les serveurs.';
+        if (error?.status === 401) {
+          this.errorMessage = 'Session expirée. Veuillez vous reconnecter.';
+        } else if (error?.status === 403) {
+          this.errorMessage = 'Accès refusé à la liste des serveurs.';
+        } else if (error?.status === 0) {
+          this.errorMessage = 'Impossible de joindre le serveur (réseau/CORS).';
+        } else {
+          this.errorMessage = 'Impossible de charger les serveurs.';
+        }
         this.servers = [];
         this.selectedServer = this.createEmptyServer();
         this.finishLoading();
@@ -192,14 +201,12 @@ export class UserServers implements OnInit {
     });
   }
 
-  private restoreUserFromStorage(): void {
-    const savedUser =
-      JSON.parse(localStorage.getItem('currentUser') || 'null') ||
-      JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+  private restoreUserFromStorage(): boolean {
+    const savedUser = this.readCurrentUserFromStorage();
 
     if (!savedUser) {
       this.router.navigate(['/login']);
-      return;
+      return false;
     }
 
     this.currentUser = {
@@ -210,6 +217,18 @@ export class UserServers implements OnInit {
       status: savedUser.status || 'Connecte',
       image: savedUser.image || savedUser.photo || 'assets/profil.png'
     };
+
+    return true;
+  }
+
+  private readCurrentUserFromStorage(): any | null {
+    try {
+      const fromLocal = localStorage.getItem('currentUser');
+      const fromSession = sessionStorage.getItem('currentUser');
+      return JSON.parse(fromLocal || 'null') || JSON.parse(fromSession || 'null');
+    } catch {
+      return null;
+    }
   }
 
   private mapApiToUi(server: ServerApi): UserServerItem {

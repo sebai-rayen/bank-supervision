@@ -178,6 +178,9 @@
               </div>
             </div>
 
+            <div class="panel-state" *ngIf="loading">Chargement des serveurs...</div>
+            <div class="panel-error" *ngIf="!loading && errorMessage">{{ errorMessage }}</div>
+
             <div class="table-wrap">
               <table class="table table-borderless align-middle m-0 table-custom">
                 <thead>

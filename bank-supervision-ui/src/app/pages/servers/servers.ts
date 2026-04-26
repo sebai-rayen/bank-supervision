@@ -12,10 +12,11 @@ interface ServerItem {
   os: string;
   status: string;
   lastCheck: string;
+  system: string;
 }
 
 const DEFAULT_LAST_CHECK = '--:--';
-const DEFAULT_STATUS = 'Online';
+const DEFAULT_STATUS = 'ONLINE';
 
 @Component({
   selector: 'app-servers',
@@ -36,11 +37,18 @@ export class Servers implements OnInit {
   itemsPerPage = 6;
 
   loading = false;
-  errorMessage = '';
+  error = '';
+  addError = '';
+  editError = '';
+  deleteError = '';
 
   servers: ServerItem[] = [];
 
   form: ServerItem = this.createEmptyForm();
+  editForm: ServerItem = this.createEmptyForm();
+  deleteTarget: ServerItem | null = null;
+  showEdit = false;
+  showDelete = false;
 
   ngOnInit(): void {
     this.loadServers();
@@ -48,18 +56,17 @@ export class Servers implements OnInit {
 
   loadServers(): void {
     this.loading = true;
-    this.errorMessage = '';
+    this.error = '';
 
     this.serverService.getServers().subscribe({
       next: (data) => {
         this.servers = data.map((server) => this.mapApiToUi(server));
         this.currentPage = 1;
-        console.log(this.servers.length);
         this.finishLoading();
       },
       error: (error) => {
         console.error('Erreur chargement serveurs :', error);
-        this.errorMessage = 'Impossible de charger les serveurs.';
+        this.error = 'Impossible de charger les serveurs.';
         this.finishLoading();
       }
     });
@@ -71,9 +78,10 @@ export class Servers implements OnInit {
       name: server.name ?? '-',
       ip: server.ipAddress ?? '-',
       port: server.port !== undefined && server.port !== null ? String(server.port) : '-',
-      os: server.os ?? server.system ?? '-',
+      os: server.os ?? '-',
       status: server.status ?? DEFAULT_STATUS,
-      lastCheck: this.formatTime(server.lastCheck)
+      lastCheck: this.formatTime(server.lastCheck),
+      system: server.system ?? 'Core'
     };
   }
 
@@ -142,12 +150,14 @@ export class Servers implements OnInit {
 
   openAddServer(): void {
     this.showAdd = true;
-    this.errorMessage = '';
+    this.addError = '';
+    this.form = this.createEmptyForm();
   }
 
   closeAddServer(): void {
     this.showAdd = false;
     this.showOs = false;
+    this.addError = '';
     this.resetForm();
   }
 
@@ -161,10 +171,27 @@ export class Servers implements OnInit {
   }
 
   addServer(): void {
-    this.errorMessage = '';
+    if (this.loading) return;
+    this.addError = '';
 
-    if (!this.isFormValid()) {
-      this.errorMessage = 'Remplis tous les champs.';
+    if (!this.form.name.trim()) {
+      this.addError = 'Le nom du serveur est obligatoire';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!this.form.ip.trim()) {
+      this.addError = "L'adresse IP est obligatoire";
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!this.form.port.trim()) {
+      this.addError = 'Le port est obligatoire';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!this.form.os.trim()) {
+      this.addError = "L'OS est obligatoire";
+      this.cdr.detectChanges();
       return;
     }
 
@@ -173,18 +200,111 @@ export class Servers implements OnInit {
       ipAddress: this.form.ip.trim(),
       port: Number(this.form.port),
       os: this.form.os.trim(),
-      status: this.form.status || DEFAULT_STATUS
+      status: this.form.status || DEFAULT_STATUS,
+      system: this.form.system
     };
+
+    this.loading = true;
+    this.cdr.detectChanges();
 
     this.serverService.addServer(payload).subscribe({
       next: () => {
+        this.loading = false;
         this.loadServers();
         this.closeAddServer();
-        this.resetForm();
       },
       error: (error) => {
-        console.error('Erreur ajout serveur :', error);
-        this.errorMessage = 'Impossible d\'ajouter le serveur.';
+        this.loading = false;
+        console.error('Erreur ajout serveur (backend) :', error);
+        this.addError = error.error?.message || "Impossible d'ajouter le serveur.";
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  openEdit(server: ServerItem): void {
+    this.editForm = { ...server };
+    this.editError = '';
+    this.showEdit = true;
+  }
+
+  closeEdit(): void {
+    this.showEdit = false;
+    this.editError = '';
+    this.editForm = this.createEmptyForm();
+  }
+
+  saveEdit(): void {
+    if (this.loading) return;
+    this.editError = '';
+    if (!this.editForm.id) return;
+
+    if (!this.editForm.name.trim()) {
+      this.editError = 'Le nom est obligatoire';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!this.editForm.ip.trim()) {
+      this.editError = "L'adresse IP est obligatoire";
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const payload: ServerApi = {
+      name: this.editForm.name.trim(),
+      ipAddress: this.editForm.ip.trim(),
+      port: Number(this.editForm.port),
+      os: this.editForm.os.trim(),
+      status: this.editForm.status,
+      system: this.editForm.system
+    };
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    this.serverService.updateServer(this.editForm.id, payload).subscribe({
+      next: () => {
+        this.loading = false;
+        this.loadServers();
+        this.closeEdit();
+      },
+      error: (error) => {
+        this.loading = false;
+        this.editError = error.error?.message || "Impossible de modifier le serveur.";
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  openDelete(server: ServerItem): void {
+    this.deleteTarget = server;
+    this.deleteError = '';
+    this.showDelete = true;
+  }
+
+  closeDelete(): void {
+    this.showDelete = false;
+    this.deleteError = '';
+    this.deleteTarget = null;
+  }
+
+  confirmDelete(): void {
+    if (!this.deleteTarget || !this.deleteTarget.id || this.loading) return;
+    this.deleteError = '';
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    this.serverService.deleteServer(this.deleteTarget.id).subscribe({
+      next: () => {
+        this.loading = false;
+        this.loadServers();
+        this.closeDelete();
+      },
+      error: (error) => {
+        this.loading = false;
+        this.deleteError = error.error?.message || "Impossible de supprimer le serveur.";
+        this.cdr.detectChanges();
       }
     });
   }
@@ -212,7 +332,8 @@ export class Servers implements OnInit {
       port: '',
       os: '',
       status: DEFAULT_STATUS,
-      lastCheck: DEFAULT_LAST_CHECK
+      lastCheck: DEFAULT_LAST_CHECK,
+      system: 'Core'
     };
   }
 

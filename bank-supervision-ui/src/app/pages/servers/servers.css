@@ -181,7 +181,7 @@ html, body {
 }
 
 .top-search {
-  min-width: 480px;
+  min-width: 380px;
   max-width: 560px;
   width: 100%;
   background: #3d4a5d;
@@ -318,7 +318,7 @@ html, body {
 .table-custom tbody td {
   background: rgba(95, 112, 130, .88) !important;
   color: #ffffffeb !important;
-  border-top: 1px solid rgba(255,255,255,.10) !important;
+  border-bottom: 0.25px solid rgba(255,255,255,.10) !important;
   padding: 13px 12px;
 }
 
@@ -508,6 +508,27 @@ html, body {
   cursor: pointer;
 }
 
+.btn-danger-modern {
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  color: #ff6b6b;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger-modern:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.25);
+  border-color: rgba(255, 107, 107, 0.55);
+}
+
+.btn-danger-modern:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .custom-select {
   position: relative;
   margin-top: 6px;
@@ -548,32 +569,68 @@ html, body {
   background: #1976ff;
 }
 
-/* RESPONSIVE */
-@media (max-width: 1100px) {
-  .topbar {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-
-  .top-search {
-    min-width: 0;
-    max-width: 100%;
-    width: 100%;
-  }
+/* =========================
+   MODAL VALIDATION ERROR
+========================= */
+.modal-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(214, 40, 40, 0.18);
+  border: 1px solid rgba(214, 40, 40, 0.55);
+  border-radius: 10px;
+  color: #ff6b6b;
+  font-size: 0.88rem;
+  font-weight: 700;
+  animation: fadeUp 0.2s ease both;
 }
 
-@media (max-width: 900px) {
-  .shell {
-    flex-direction: column;
-    padding: 8px;
-  }
+.modal-error-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  color: #ff6b6b;
+}
 
-  .sidebar {
-    width: 100%;
-    min-width: 100%;
-  }
+/* =========================
+   ACTIONS
+========================= */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+}
 
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
+.icon-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.icon-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.icon-btn:hover .icon-img {
+  transform: scale(1.12);
+  opacity: 0.9;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sidebarReveal {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
 }

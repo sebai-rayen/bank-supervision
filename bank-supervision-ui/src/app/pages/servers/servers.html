@@ -123,6 +123,9 @@
             </button>
           </div>
 
+          <div class="alert alert-info mt-3" *ngIf="loading">Chargement...</div>
+          <div class="alert alert-danger mt-3" *ngIf="error">{{ error }}</div>
+
           <div class="table-wrap">
             <table class="table table-borderless align-middle m-0 table-custom">
               <thead>
@@ -131,9 +134,10 @@
                   <th style="width:170px;">IP</th>
                   <th style="width:90px;">Port</th>
                   <th style="width:140px;">OS</th>
-                  <th style="width:160px;">Status</th>
-                  <th class="text-end" style="width:110px;">Time</th>
-                </tr>
+                   <th style="width:160px;">Status</th>
+                   <th class="text-end" style="width:110px;">Time</th>
+                   <th class="text-end" style="width:120px;">Actions</th>
+                 </tr>
               </thead>
 
               <tbody>
@@ -142,14 +146,25 @@
                   <td class="muted">{{ s.ip }}</td>
                   <td class="muted">{{ s.port }}</td>
                   <td class="muted">{{ s.os }}</td>
-                  <td class="status-text" [ngClass]="getStatusClass(s.status)">
-                    {{ s.status }}
-                  </td>
-                  <td class="text-end muted">{{ s.lastCheck }}</td>
-                </tr>
+                   <td class="status-text" [ngClass]="getStatusClass(s.status)">
+                     {{ s.status }}
+                   </td>
+                   <td class="text-end muted">{{ s.lastCheck }}</td>
+                   <td class="text-end">
+                     <div class="actions">
+                       <button class="icon-btn" type="button" (click)="openEdit(s)" title="Modifier">
+                         <img src="assets/edit%20(1).png" class="icon-img" alt="Modifier" />
+                       </button>
+
+                       <button class="icon-btn danger" type="button" (click)="openDelete(s)" title="Supprimer">
+                         <img src="assets/supprimer%206.png" class="icon-img" alt="Supprimer" />
+                       </button>
+                     </div>
+                   </td>
+                 </tr>
 
                 <tr *ngIf="paginatedServers.length === 0">
-                  <td colspan="6" class="empty">No servers found</td>
+                  <td colspan="7" class="empty">No servers found</td>
                 </tr>
               </tbody>
             </table>
@@ -183,10 +198,9 @@
           </div>
         </section>
 
-        <div
-          class="modal-backdrop"
-          *ngIf="showAdd"
-          (click)="closeAddServer()"></div>
+        <!-- Backdrop -->
+        <div class="modal-backdrop" *ngIf="showAdd || showEdit || showDelete"
+             (click)="closeAddServer(); showEdit = false; showDelete = false"></div>
 
         <div class="modal-card" *ngIf="showAdd">
           <div class="modal-head">
@@ -231,20 +245,105 @@
 
             <label class="form-label">Status</label>
             <select class="form-control" [(ngModel)]="form.status">
-              <option value="Online">Online</option>
-              <option value="Warning">Warning</option>
-              <option value="Critical">Critical</option>
-              <option value="Offline">Offline</option>
-              <option value="Maintenance">Maintenance</option>
+              <option value="ONLINE">Online</option>
+              <option value="WARNING">Warning</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="OFFLINE">Offline</option>
+              <option value="MAINTENANCE">Maintenance</option>
             </select>
+
+            <div class="modal-error" *ngIf="addError">
+              <span class="modal-error-icon">&#9888;</span> {{ addError }}
+            </div>
 
             <div class="modal-actions">
               <button class="btn-soft" type="button" (click)="closeAddServer()">Cancel</button>
-              <button class="btn-primary-soft" type="button" (click)="addServer()">Add</button>
+              <button class="btn-primary-soft" type="button" (click)="addServer()" [disabled]="loading">
+                {{ loading ? 'Adding...' : 'Add' }}
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+        <!-- EDIT MODAL -->
+        <div class="modal-card" *ngIf="showEdit">
+          <div class="modal-head">
+            <div class="modal-title">Modifier le serveur</div>
+            <button class="modal-x" type="button" (click)="closeEdit()">×</button>
+          </div>
+
+          <div class="modal-body">
+            <label class="form-label">Nom du serveur</label>
+            <input class="form-control" [(ngModel)]="editForm.name" />
+
+            <div class="grid2">
+              <div>
+                <label class="form-label">Adresse IP</label>
+                <input class="form-control" [(ngModel)]="editForm.ip" />
+              </div>
+              <div>
+                <label class="form-label">Port</label>
+                <input class="form-control" [(ngModel)]="editForm.port" />
+              </div>
+            </div>
+
+            <label class="form-label">OS</label>
+            <select class="form-control" [(ngModel)]="editForm.os">
+              <option value="Linux">Linux</option>
+              <option value="Ubuntu">Ubuntu</option>
+              <option value="Windows">Windows</option>
+              <option value="Debian">Debian</option>
+              <option value="CentOS">CentOS</option>
+            </select>
+
+            <label class="form-label">Statut</label>
+            <select class="form-control" [(ngModel)]="editForm.status">
+              <option value="ONLINE">Online</option>
+              <option value="WARNING">Warning</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="OFFLINE">Offline</option>
+              <option value="MAINTENANCE">Maintenance</option>
+            </select>
+
+            <div class="modal-error" *ngIf="editError">
+              <span class="modal-error-icon">&#9888;</span> {{ editError }}
+            </div>
+
+            <div class="modal-actions">
+              <button class="btn-soft" type="button" (click)="closeEdit()">Annuler</button>
+              <button class="btn-primary-soft" type="button" (click)="saveEdit()" [disabled]="loading">
+                {{ loading ? 'Sauvegarde...' : 'Sauvegarder' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DELETE MODAL -->
+        <div class="modal-card modal-small" *ngIf="showDelete">
+          <div class="modal-head">
+            <div class="modal-title">Supprimer le serveur</div>
+            <button class="modal-x" type="button" (click)="closeDelete()">×</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="delete-text">
+              Êtes-vous sûr de vouloir supprimer le serveur <b>{{ deleteTarget?.name }}</b> ?
+            </div>
+
+            <div class="modal-error" *ngIf="deleteError">
+              <span class="modal-error-icon">&#9888;</span> {{ deleteError }}
+            </div>
+
+            <div class="modal-actions">
+              <button class="btn-soft" type="button" (click)="closeDelete()">Annuler</button>
+              <button class="btn-danger-modern" type="button" (click)="confirmDelete()" [disabled]="loading">
+                {{ loading ? 'Suppression...' : 'Supprimer' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
     </main>
 
   </div>
