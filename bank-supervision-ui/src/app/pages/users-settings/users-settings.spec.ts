@@ -1,18 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
-import { UsersSettings } from './users-settings';
+import { UserSettings } from './users-settings';
 
-describe('UsersSettings', () => {
-  let component: UsersSettings;
-  let fixture: ComponentFixture<UsersSettings>;
+describe('UserSettings', () => {
+  let component: UserSettings;
+  let fixture: ComponentFixture<UserSettings>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [UsersSettings]
+      imports: [UserSettings],
+      providers: [provideRouter([])]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(UsersSettings);
+    fixture = TestBed.createComponent(UserSettings);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });
