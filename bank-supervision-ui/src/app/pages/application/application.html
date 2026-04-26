@@ -91,7 +91,8 @@
           <input
             type="text"
             placeholder="Search applications..."
-            [(ngModel)]="query" />
+            [(ngModel)]="query"
+            (ngModelChange)="currentPage = 1" />
         </div>
 
         <div class="top-user">
@@ -130,6 +131,7 @@
                 <tr>
                   <th style="width:220px;">Application</th>
                   <th style="width:140px;">Server</th>
+                  <th style="width:140px;">User</th>
                   <th style="width:120px;">Version</th>
                   <th style="width:140px;">Status</th>
                   <th class="text-end" style="width:110px;">Time</th>
@@ -137,9 +139,10 @@
               </thead>
 
               <tbody>
-                <tr *ngFor="let app of filteredApplications">
+                <tr *ngFor="let app of paginatedApplications">
                   <td class="fw-semibold">{{ app.name }}</td>
                   <td class="muted">{{ app.server }}</td>
+                  <td class="muted">{{ app.user }}</td>
                   <td class="muted">{{ app.version }}</td>
                   <td class="status-text" [ngClass]="getStatusClass(app.status)">
                     {{ app.status }}
@@ -147,11 +150,37 @@
                   <td class="text-end muted">{{ app.lastCheck }}</td>
                 </tr>
 
-                <tr *ngIf="filteredApplications.length === 0">
-                  <td colspan="5" class="empty">No applications found</td>
+                <tr *ngIf="paginatedApplications.length === 0">
+                  <td colspan="6" class="empty">No applications found</td>
                 </tr>
               </tbody>
             </table>
+
+            <div class="table-pagination" *ngIf="filteredApplications.length > itemsPerPage">
+              <button
+                type="button"
+                (click)="prevPage()"
+                [disabled]="currentPage === 1">
+                &lt;
+              </button>
+
+              <button
+                class="page-btn"
+                type="button"
+                *ngFor="let page of pages"
+                [class.active]="page === currentPage"
+                (click)="goToPage(page)">
+                {{ page }}
+              </button>
+
+              <button
+                class="page-btn nav-btn"
+                type="button"
+                (click)="nextPage()"
+                [disabled]="currentPage === totalPages">
+                &gt;
+              </button>
+            </div>
           </div>
         </section>
 
@@ -174,10 +203,33 @@
               placeholder="Ex: Core Banking" />
 
             <label class="form-label">Server</label>
-            <input
+            <select
               class="form-control"
-              [(ngModel)]="form.server"
-              placeholder="Ex: SRV-06" />
+              [(ngModel)]="form.serverId"
+              [disabled]="serversLoading || serverOptions.length === 0">
+              <option [ngValue]="null" disabled>Select a server...</option>
+              <option *ngFor="let srv of serverOptions" [ngValue]="srv.id">
+                {{ srv.name }}
+              </option>
+            </select>
+            <div class="select-hint" *ngIf="serversLoading">Loading servers...</div>
+            <div class="select-hint" *ngIf="!serversLoading && serverOptions.length === 0 && !serversError">
+              No servers available. Add a server first.
+            </div>
+            <div class="text-danger small mt-1" *ngIf="serversError">{{ serversError }}</div>
+
+            <label class="form-label">Assign to User <span class="text-danger">*</span></label>
+            <select
+              class="form-control"
+              [(ngModel)]="form.assignedUserId"
+              [disabled]="usersLoading">
+              <option [ngValue]="null" disabled>Select a user...</option>
+              <option *ngFor="let u of userOptions" [ngValue]="u.id">
+                {{ u.nom }} ({{ u.email }})
+              </option>
+            </select>
+            <div class="select-hint" *ngIf="usersLoading">Loading users...</div>
+            <div class="text-danger small mt-1" *ngIf="usersError">{{ usersError }}</div>
 
             <label class="form-label">Version</label>
             <input
