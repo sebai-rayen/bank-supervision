@@ -42,9 +42,18 @@ export class UserDashboard implements OnInit, OnDestroy {
   private dashboardService = inject(DashboardService);
   private cdr = inject(ChangeDetectorRef);
 
+  private readonly dashboardRefreshMs = 10000;
   private destroy$ = new Subject<void>();
   private nameRotateHandle?: ReturnType<typeof setInterval>;
+  private applicationRotateHandle?: ReturnType<typeof setInterval>;
+  private readonly nameRotateIntervalMs = 10000;
   private selectedIndex = 0;
+  private serverSectionPaused = false;
+  private pendingServerSectionData?: DashboardResponse;
+  private serverWindowStart = 0;
+  private appWindowStart = 0;
+  private allRecentServers: AlertRow[] = [];
+  private allApplications: ApplicationRow[] = [];
 
   stats: DashboardStats = {
     totalServers: 0,
@@ -80,7 +89,7 @@ export class UserDashboard implements OnInit, OnDestroy {
     this.loading = true;
     this.errorMessage = '';
 
-    this.dashboardService.pollDashboardData(7000)
+    this.dashboardService.pollDashboardData(this.dashboardRefreshMs)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => this.applyDashboardData(data),
@@ -91,16 +100,29 @@ export class UserDashboard implements OnInit, OnDestroy {
         }
       });
 
-    this.nameRotateHandle = setInterval(() => this.rotateServer(), 10000);
+    this.startNameRotation();
+    this.startApplicationRotation();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.stopNameRotation();
+    this.stopApplicationRotation();
+  }
 
-    if (this.nameRotateHandle) {
-      clearInterval(this.nameRotateHandle);
+  pauseServerAutoRotate(): void {
+    this.serverSectionPaused = true;
+    this.stopNameRotation();
+  }
+
+  resumeServerAutoRotate(): void {
+    this.serverSectionPaused = false;
+    if (this.pendingServerSectionData) {
+      this.applyServerSectionData(this.pendingServerSectionData);
+      this.pendingServerSectionData = undefined;
     }
+    this.startNameRotation();
   }
 
   selectServer(serverName: string): void {
@@ -173,6 +195,10 @@ export class UserDashboard implements OnInit, OnDestroy {
   }
 
   private applyDashboardData(data: DashboardResponse): void {
+    if (this.serverSectionPaused) {
+      this.pendingServerSectionData = data;
+    }
+
     this.stats = {
       totalServers: data.totalServers ?? 0,
       active: data.activeServers ?? 0,
@@ -180,19 +206,34 @@ export class UserDashboard implements OnInit, OnDestroy {
       critical: data.criticalServers ?? 0
     };
 
-    this.rows = (data.recentServers ?? []).slice(0, 5).map((row) => ({
+    this.allApplications = (data.recentApplications ?? []).map((app) => ({
+      app: app.app,
+      type: app.type,
+      severity: app.severity,
+      time: this.formatTime(app.time)
+    }));
+    this.applyApplicationSectionData();
+
+    if (!this.serverSectionPaused) {
+      this.applyServerSectionData(data);
+    }
+
+    this.finishLoading();
+  }
+
+  private applyServerSectionData(data: DashboardResponse): void {
+    this.allRecentServers = (data.recentServers ?? []).map((row) => ({
       server: row.server,
       type: row.status || 'UNKNOWN',
       severity: this.mapStatusToSeverity(row.status),
       time: this.formatTime(row.time)
     }));
 
-    this.applications = (data.recentApplications ?? []).slice(0, 5).map((app) => ({
-      app: app.app,
-      type: app.type,
-      severity: app.severity,
-      time: this.formatTime(app.time)
-    }));
+    if (this.serverWindowStart >= this.allRecentServers.length) {
+      this.serverWindowStart = 0;
+    }
+
+    this.rows = this.sliceWindow(this.allRecentServers, this.serverWindowStart, 5);
 
     this.serverMetrics = (data.serverMetrics ?? []).map((server) => ({
       name: server.name,
@@ -206,10 +247,23 @@ export class UserDashboard implements OnInit, OnDestroy {
       }
       this.selectedServer = this.serverMetrics[this.selectedIndex];
     } else {
+      this.selectedIndex = 0;
       this.selectedServer = { name: '-', cpu: 0, ram: 0 };
     }
+  }
 
-    this.finishLoading();
+  private applyApplicationSectionData(): void {
+    if (this.appWindowStart >= this.allApplications.length) {
+      this.appWindowStart = 0;
+    }
+
+    this.applications = this.sliceWindow(this.allApplications, this.appWindowStart, 5);
+  }
+
+  private rotateServerSection(): void {
+    this.rotateServer();
+    this.rotateServerRowsWindow();
+    this.cdr.detectChanges();
   }
 
   private rotateServer(): void {
@@ -217,7 +271,65 @@ export class UserDashboard implements OnInit, OnDestroy {
 
     this.selectedIndex = (this.selectedIndex + 1) % this.serverMetrics.length;
     this.selectedServer = this.serverMetrics[this.selectedIndex];
+  }
+
+  private rotateServerRowsWindow(): void {
+    if (this.allRecentServers.length > 5) {
+      this.serverWindowStart = (this.serverWindowStart + 5) % this.allRecentServers.length;
+    } else {
+      this.serverWindowStart = 0;
+    }
+    this.rows = this.sliceWindow(this.allRecentServers, this.serverWindowStart, 5);
+  }
+
+  private rotateApplicationsWindow(): void {
+    if (this.allApplications.length > 5) {
+      this.appWindowStart = (this.appWindowStart + 5) % this.allApplications.length;
+    } else {
+      this.appWindowStart = 0;
+    }
+    this.applications = this.sliceWindow(this.allApplications, this.appWindowStart, 5);
     this.cdr.detectChanges();
+  }
+
+  private startNameRotation(): void {
+    if (this.nameRotateHandle) return;
+    this.nameRotateHandle = setInterval(() => this.rotateServerSection(), this.nameRotateIntervalMs);
+  }
+
+  private stopNameRotation(): void {
+    if (!this.nameRotateHandle) return;
+    clearInterval(this.nameRotateHandle);
+    this.nameRotateHandle = undefined;
+  }
+
+  private startApplicationRotation(): void {
+    if (this.applicationRotateHandle) return;
+    this.applicationRotateHandle = setInterval(
+      () => this.rotateApplicationsWindow(),
+      this.nameRotateIntervalMs
+    );
+  }
+
+  private stopApplicationRotation(): void {
+    if (!this.applicationRotateHandle) return;
+    clearInterval(this.applicationRotateHandle);
+    this.applicationRotateHandle = undefined;
+  }
+
+  private sliceWindow<T>(items: T[], start: number, size: number): T[] {
+    if (items.length <= size) {
+      return items.slice(0, size);
+    }
+
+    const end = start + size;
+    if (end <= items.length) {
+      return items.slice(start, end);
+    }
+
+    const first = items.slice(start);
+    const remaining = size - first.length;
+    return first.concat(items.slice(0, remaining));
   }
 
   private mapStatusToSeverity(status?: string): 'Warning' | 'Critical' {
