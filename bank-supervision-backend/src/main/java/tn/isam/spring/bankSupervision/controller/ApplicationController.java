@@ -5,21 +5,36 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.isam.spring.bankSupervision.entity.Application;
 import tn.isam.spring.bankSupervision.dto.request.ApplicationRequest;
+import tn.isam.spring.bankSupervision.dto.response.PersonneResponse;
+import tn.isam.spring.bankSupervision.mapper.PersonneMapper;
 import tn.isam.spring.bankSupervision.service.ApplicationService;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/applications")
-@CrossOrigin(origins = "http://localhost:4200")
 @RequiredArgsConstructor
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+    private final PersonneMapper personneMapper;
 
     @GetMapping
     public List<Application> getAllApplications() {
         return applicationService.getAllApplications();
+    }
+
+    @GetMapping("/mine")
+    public List<Application> getMyApplications() {
+        return applicationService.getMyApplications();
+    }
+
+    @GetMapping("/assignable-users")
+    public List<PersonneResponse> getAssignableUsers() {
+        return applicationService.getUsersForAssignment()
+                .stream()
+                .map(personneMapper::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")

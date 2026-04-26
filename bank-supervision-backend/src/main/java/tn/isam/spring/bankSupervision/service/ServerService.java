@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
+import tn.isam.spring.bankSupervision.entity.Admin;
 import tn.isam.spring.bankSupervision.entity.Server;
 import tn.isam.spring.bankSupervision.dto.request.ServerRequest;
 import tn.isam.spring.bankSupervision.repository.ServerRepository;
@@ -13,6 +16,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ServerService {
 
     private final ServerRepository serverRepository;
@@ -27,20 +31,32 @@ public class ServerService {
     }
 
     public Server addServer(ServerRequest request) {
+        if (serverRepository.existsByName(request.getName())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Un serveur avec ce nom existe déjà");
+        }
+        if (serverRepository.existsByIpAddress(request.getIpAddress())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Un serveur avec cette adresse IP existe déjà");
+        }
+
         Server server = new Server();
         server.setName(request.getName());
         server.setIpAddress(request.getIpAddress());
         server.setPort(request.getPort());
         server.setOs(request.getOs());
         server.setSystem(request.getSystem());
-
         if (request.getStatus() == null || request.getStatus().isBlank()) {
-            server.setStatus("Online");
+            server.setStatus("ONLINE");
         } else {
-            server.setStatus(request.getStatus());
+            server.setStatus(request.getStatus().toUpperCase());
+        }
+        server.setLastCheck(LocalDateTime.now());
+
+        // Associate with current admin if possible
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Admin) {
+            server.setAdmin((Admin) principal);
         }
 
-        server.setLastCheck(LocalDateTime.now());
         return serverRepository.save(server);
     }
 
@@ -54,9 +70,9 @@ public class ServerService {
         server.setSystem(updatedServer.getSystem());
 
         if (updatedServer.getStatus() == null || updatedServer.getStatus().isBlank()) {
-            server.setStatus("Online");
+            server.setStatus("ONLINE");
         } else {
-            server.setStatus(updatedServer.getStatus());
+            server.setStatus(updatedServer.getStatus().toUpperCase());
         }
 
         server.setLastCheck(LocalDateTime.now());

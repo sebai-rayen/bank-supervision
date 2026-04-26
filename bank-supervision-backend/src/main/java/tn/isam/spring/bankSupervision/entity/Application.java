@@ -1,6 +1,7 @@
 package tn.isam.spring.bankSupervision.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,7 +19,6 @@ public class Application  {
     private Long id;
 
     private String name;
-    private String servers;
     private String version;
     private String status;
     private LocalDateTime lastCheck;
@@ -29,9 +29,29 @@ public class Application  {
     private Server server;
 
     @JsonIgnore
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private Personne user;
+
+    @JsonProperty("servers")
+    public String getServers() {
+        return server != null ? server.getName() : null;
+    }
+
+    @JsonProperty("serverId")
+    public Long getServerId() {
+        return server != null ? server.getId() : null;
+    }
+
+    @JsonProperty("userEmail")
+    public String getUserEmail() {
+        return user != null ? user.getEmail() : null;
+    }
+
+    @JsonProperty("userName")
+    public String getUserName() {
+        return user != null ? user.getNom() : null;
+    }
 
     @JsonIgnore
     @OneToMany(mappedBy = "application", cascade = CascadeType.ALL)

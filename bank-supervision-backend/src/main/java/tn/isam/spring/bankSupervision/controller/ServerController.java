@@ -2,43 +2,53 @@ package tn.isam.spring.bankSupervision.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import tn.isam.spring.bankSupervision.entity.Server;
 import tn.isam.spring.bankSupervision.dto.request.ServerRequest;
+import tn.isam.spring.bankSupervision.dto.response.ServerResponse;
+import tn.isam.spring.bankSupervision.mapper.ServerMapper;
 import tn.isam.spring.bankSupervision.service.ServerService;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/servers")
-@CrossOrigin(origins = "http://localhost:4200")
 @RequiredArgsConstructor
 public class ServerController {
 
     private final ServerService serverService;
+    private final ServerMapper serverMapper;
 
     @GetMapping
-    public List<Server> getAllServers() {
-        return serverService.getAllServers();
+    @PreAuthorize("hasRole('USER')")
+    public List<ServerResponse> getAllServers() {
+        return serverService.getAllServers()
+                .stream()
+                .map(serverMapper::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")
-    public Server getServerById(@PathVariable Long id) {
-        return serverService.getServerById(id);
+    @PreAuthorize("hasRole('USER')")
+    public ServerResponse getServerById(@PathVariable Long id) {
+        return serverMapper.toResponse(serverService.getServerById(id));
     }
 
     @PostMapping
-    public ResponseEntity<Server> addServer(@RequestBody ServerRequest server) {
-        return ResponseEntity.ok(serverService.addServer(server));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ServerResponse> addServer(@RequestBody ServerRequest server) {
+        return ResponseEntity.ok(serverMapper.toResponse(serverService.addServer(server)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Server> updateServer(@PathVariable Long id,
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ServerResponse> updateServer(@PathVariable Long id,
                                                @RequestBody ServerRequest updatedServer) {
-        return ResponseEntity.ok(serverService.updateServer(id, updatedServer));
+        return ResponseEntity.ok(serverMapper.toResponse(serverService.updateServer(id, updatedServer)));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteServer(@PathVariable Long id) {
         serverService.deleteServer(id);
         return ResponseEntity.noContent().build();
