@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, interval } from 'rxjs';
-import { startWith, switchMap } from 'rxjs/operators';
+import { switchMap } from 'rxjs/operators';
 
 export type AlertSeverity = 'Warning' | 'Critical';
 
@@ -20,6 +20,7 @@ export interface ReceivedAlertDto {
   type: string;
   severity: AlertSeverity;
   email: string;
+  subject: string;
   time: string;
   message: string;
 }
@@ -27,6 +28,30 @@ export interface ReceivedAlertDto {
 export interface AdminAlertsResponse {
   latest: IncomingAlertDto | null;
   alerts: ReceivedAlertDto[];
+  sentAlerts: UserAlertDto[];
+}
+
+export interface CreateAlertRequest {
+  server: string;
+  recipientEmail: string;
+  type: string;
+  severity: AlertSeverity;
+  subject: string;
+  message: string;
+}
+
+export interface UserAlertDto {
+  id: number;
+  server: string;
+  type: string;
+  severity: AlertSeverity;
+  subject: string;
+  message: string;
+  recipientEmail: string;
+  recipientName: string;
+  sentBy: string;
+  time: string;
+  createdAt: number | null;
 }
 
 @Injectable({
@@ -40,9 +65,22 @@ export class AlertsService {
     return this.http.get<AdminAlertsResponse>(this.apiUrl);
   }
 
+  createAlert(payload: CreateAlertRequest): Observable<UserAlertDto> {
+    return this.http.post<UserAlertDto>(this.apiUrl, payload);
+  }
+
+  getMyAlerts(): Observable<UserAlertDto[]> {
+    return this.http.get<UserAlertDto[]>(`${this.apiUrl}/my`);
+  }
+
+  pollMyAlerts(refreshMs = 7000): Observable<UserAlertDto[]> {
+    return interval(refreshMs).pipe(
+      switchMap(() => this.getMyAlerts())
+    );
+  }
+
   pollAdminAlerts(refreshMs = 7000): Observable<AdminAlertsResponse> {
     return interval(refreshMs).pipe(
-      startWith(0),
       switchMap(() => this.getAdminAlerts())
     );
   }

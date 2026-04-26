@@ -5,10 +5,20 @@ import { Observable } from 'rxjs';
 export interface ApplicationApi {
   id?: number;
   name: string;
-  servers: string;
+  servers?: string;
+  serverId?: number;
   version: string;
   status: string;
   lastCheck?: string;
+  assignedUserId?: number;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface UserOption {
+  id: number;
+  nom: string;
+  email: string;
 }
 
 @Injectable({
@@ -24,6 +34,10 @@ export class ApplicationService {
 
   getMyApplications(): Observable<ApplicationApi[]> {
     return this.http.get<ApplicationApi[]>(`${this.apiUrl}/mine`);
+  }
+
+  getAssignableUsers(): Observable<UserOption[]> {
+    return this.http.get<UserOption[]>(`${this.apiUrl}/assignable-users`);
   }
 
   addApplication(application: ApplicationApi): Observable<ApplicationApi> {
