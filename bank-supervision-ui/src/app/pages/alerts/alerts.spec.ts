@@ -1,4 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 
 import { Alerts } from './alerts';
 
@@ -8,7 +11,8 @@ describe('Alerts', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Alerts]
+      imports: [Alerts],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()]
     })
     .compileComponents();
 

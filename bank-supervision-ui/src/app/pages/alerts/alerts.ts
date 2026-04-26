@@ -1,9 +1,11 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Subscription } from 'rxjs';
-import { AlertsService, type AlertSeverity, type AdminAlertsResponse, type IncomingAlertDto, type ReceivedAlertDto } from '../../services/alerts.service';
+import { forkJoin, Subscription } from 'rxjs';
+import { AlertsService, type AlertSeverity, type AdminAlertsResponse, type IncomingAlertDto, type ReceivedAlertDto, type UserAlertDto } from '../../services/alerts.service';
+import { UsersService, type PersonneResponse } from '../../services/users.service';
+import { ServerService, type ServerApi } from '../../services/server.service';
 
 type AlertsTab = 'received' | 'send';
 
@@ -21,6 +23,7 @@ interface ReceivedAlert {
   type: string;
   severity: AlertSeverity;
   email: string;
+  subject: string;
   time: string;
   read: boolean;
   isNew: boolean;
@@ -29,7 +32,7 @@ interface ReceivedAlert {
 
 interface SendForm {
   server: string;
-  recipient: string;
+  recipients: string[];
   type: string;
   severity: '' | AlertSeverity;
   subject: string;
@@ -54,7 +57,11 @@ interface SentAlert {
   styleUrls: ['./alerts.css']
 })
 export class Alerts implements OnInit, OnDestroy {
+  private static readonly REFRESH_MS = 15000;
   private alertsService = inject(AlertsService);
+  private usersService = inject(UsersService);
+  private serverService = inject(ServerService);
+  private cdr = inject(ChangeDetectorRef);
   private subscription?: Subscription;
 
   activeTab: AlertsTab = 'received';
@@ -67,34 +74,20 @@ export class Alerts implements OnInit, OnDestroy {
 
   serverOptions: string[] = [];
 
-  userOptions: string[] = [
-    'admin@bank.com',
-    'ops@bank.com',
-    'infra@bank.com',
-    'security@bank.com'
-  ];
+  userOptions: string[] = [];
 
   sendForm: SendForm = this.createEmptyForm();
 
   formMessage = '';
+  formMessageTitle = '';
   formError = false;
+  isSending = false;
 
-  sentAlerts: SentAlert[] = [
-    {
-      id: 1,
-      server: 'SRV-05',
-      recipient: 'ops@bank.com',
-      severity: 'Warning',
-      subject: 'CPU Warning on SRV-05',
-      message: 'CPU usage has exceeded the warning threshold.',
-      time: '08:50'
-    }
-  ];
+  sentAlerts: SentAlert[] = [];
 
   setTab(tab: AlertsTab): void {
     this.activeTab = tab;
-    this.formMessage = '';
-    this.formError = false;
+    this.clearFormFeedback();
 
     if (tab === 'received') {
       this.refreshAlerts();
@@ -103,7 +96,9 @@ export class Alerts implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.refreshAlerts();
-    this.subscription = this.alertsService.pollAdminAlerts(7000).subscribe({
+    this.loadUserOptions();
+    this.loadServerOptions();
+    this.subscription = this.alertsService.pollAdminAlerts(Alerts.REFRESH_MS).subscribe({
       next: (data) => this.applyBackendData(data),
       error: () => {
         // keep showing previous data; surface error on manual refresh only
@@ -154,66 +149,85 @@ export class Alerts implements OnInit, OnDestroy {
 
   resetSendForm(): void {
     this.sendForm = this.createEmptyForm();
-    this.formMessage = '';
-    this.formError = false;
+    this.clearFormFeedback();
   }
 
   sendAlert(): void {
     if (
       !this.sendForm.server ||
-      !this.sendForm.recipient ||
+      this.sendForm.recipients.length === 0 ||
       !this.sendForm.type ||
       !this.sendForm.severity ||
       !this.sendForm.subject.trim() ||
       !this.sendForm.message.trim()
     ) {
-      this.formError = true;
-      this.formMessage = 'Please fill in all fields before sending the alert.';
+      this.showErrorMessage(
+        'Validation error',
+        'Please fill in all required fields and add at least one recipient.'
+      );
       return;
     }
 
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    this.isSending = true;
+    this.clearFormFeedback();
 
-    const sentItem: SentAlert = {
-      id: Date.now(),
-      server: this.sendForm.server,
-      recipient: this.sendForm.recipient,
-      severity: this.sendForm.severity,
-      subject: this.sendForm.subject.trim(),
-      message: this.sendForm.message.trim(),
-      time
-    };
+    const requests = this.sendForm.recipients.map(email => 
+      this.alertsService.createAlert({
+        server: this.sendForm.server.trim(),
+        recipientEmail: email,
+        type: this.sendForm.type.trim(),
+        severity: this.sendForm.severity as AlertSeverity,
+        subject: this.sendForm.subject.trim(),
+        message: this.sendForm.message.trim()
+      })
+    );
 
-    this.sentAlerts = [sentItem, ...this.sentAlerts];
+    forkJoin(requests).subscribe({
+      next: (createdArray) => {
+        const sentItems = createdArray.map(created => this.mapSentAlert(created));
+        // Add all newly created alerts to the beginning of the history
+        this.sentAlerts = [...sentItems, ...this.sentAlerts];
+        this.resetSendForm();
+        this.showSuccessMessage(
+          'Alert(s) sent',
+          `Successfully sent alerts to ${createdArray.length} recipient(s).`
+        );
+        this.refreshAlerts();
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        const message =
+          error?.error?.message ||
+          error?.message ||
+          'Unable to send some alerts.';
+        this.showErrorMessage('Send failed', message);
+        this.isSending = false;
+        this.cdr.detectChanges();
+      },
+      complete: () => {
+        this.isSending = false;
+      }
+    });
+  }
 
-    const receivedItem: ReceivedAlert = {
-      id: Date.now() + 1,
-      server: this.sendForm.server,
-      type: this.sendForm.type,
-      severity: this.sendForm.severity,
-      email: this.sendForm.recipient,
-      time,
-      message: this.sendForm.message.trim(),
-      read: false,
-      isNew: true
-    };
+  get availableUserOptions(): string[] {
+    return this.userOptions.filter(u => !this.sendForm.recipients.includes(u));
+  }
 
-    this.alerts = [receivedItem, ...this.alerts];
+  addRecipientFromSelect(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const email = selectElement.value;
+    if (email) {
+      if (!this.sendForm.recipients.includes(email)) {
+        this.sendForm.recipients.push(email);
+      }
+      selectElement.value = ''; // Reset the dropdown
+      this.clearFormFeedback();
+    }
+  }
 
-    this.incoming = {
-      server: this.sendForm.server,
-      subject: this.sendForm.subject.trim(),
-      message: this.sendForm.message.trim(),
-      time
-      ,
-      severity: this.sendForm.severity
-    };
-
-    this.formError = false;
-    this.formMessage = 'Alert sent successfully.';
-    this.resetSendForm();
-    this.formMessage = 'Alert sent successfully.';
+  removeRecipient(email: string): void {
+    this.sendForm.recipients = this.sendForm.recipients.filter(r => r !== email);
   }
 
   trackById(_: number, item: ReceivedAlert): number {
@@ -227,7 +241,7 @@ export class Alerts implements OnInit, OnDestroy {
   private createEmptyForm(): SendForm {
     return {
       server: '',
-      recipient: '',
+      recipients: [],
       type: '',
       severity: '',
       subject: '',
@@ -249,29 +263,90 @@ export class Alerts implements OnInit, OnDestroy {
   }
 
   private applyBackendData(data: AdminAlertsResponse): void {
-    const received = (data.alerts ?? []).map((a: ReceivedAlertDto) => ({
+    const sentAlerts = (data.sentAlerts ?? []).map((item) => this.mapSentAlert(item));
+
+    const sentAsReceived: ReceivedAlert[] = (data.sentAlerts ?? []).map((item: UserAlertDto) => ({
+      id: item.id,
+      server: item.server,
+      type: item.type,
+      severity: item.severity,
+      email: item.recipientEmail,
+      subject: item.subject,
+      time: item.time,
+      message: item.message,
+      read: false,
+      isNew: false
+    }));
+
+    const backendReceived = (data.alerts ?? []).map((a: ReceivedAlertDto) => ({
       id: a.id,
       server: a.server,
       type: a.type,
       severity: a.severity,
       email: a.email,
+      subject: a.subject,
       time: a.time,
       message: a.message,
       read: false,
       isNew: false
     }));
 
-    this.alerts = received;
+    const mergedRecentAlerts = [...sentAsReceived];
+
+    for (const item of backendReceived) {
+      if (!mergedRecentAlerts.some((existing) => existing.id === item.id)) {
+        mergedRecentAlerts.push(item);
+      }
+    }
+
+    this.alerts = mergedRecentAlerts.sort((a, b) => b.id - a.id);
 
     this.incoming = data.latest
       ? this.mapIncoming(data.latest)
       : null;
 
-    this.serverOptions = Array.from(new Set(received.map((a) => a.server))).sort();
+    this.serverOptions = Array.from(new Set([
+      ...this.serverOptions,
+      ...mergedRecentAlerts.map((a) => a.server)
+    ])).sort();
+    this.sentAlerts = sentAlerts;
 
     this.applyReadState();
 
     this.isLoading = false;
+    this.cdr.detectChanges();
+  }
+
+  private loadUserOptions(): void {
+    this.usersService.list().subscribe({
+      next: (users: PersonneResponse[]) => {
+        this.userOptions = users
+          .map((user) => user.email)
+          .filter((email, index, array) => !!email && array.indexOf(email) === index)
+          .sort((a, b) => a.localeCompare(b));
+      },
+      error: () => {
+        // keep fallback suggestions if users endpoint is unavailable
+      }
+    });
+  }
+
+  private loadServerOptions(): void {
+    this.serverService.getServers().subscribe({
+      next: (servers: ServerApi[]) => {
+        const serverNames = servers
+          .map((server) => server.name?.trim())
+          .filter((name): name is string => !!name)
+          .sort((a, b) => a.localeCompare(b));
+
+        if (serverNames.length) {
+          this.serverOptions = Array.from(new Set(serverNames));
+        }
+      },
+      error: () => {
+        // keep server options inferred from alert data if servers endpoint is unavailable
+      }
+    });
   }
 
   private mapIncoming(latest: IncomingAlertDto): IncomingAlert {
@@ -282,6 +357,36 @@ export class Alerts implements OnInit, OnDestroy {
       time: latest.time,
       severity: latest.severity
     };
+  }
+
+  private mapSentAlert(item: UserAlertDto): SentAlert {
+    return {
+      id: item.id,
+      server: item.server,
+      recipient: item.recipientEmail,
+      severity: item.severity,
+      subject: item.subject,
+      message: item.message,
+      time: item.time
+    };
+  }
+
+  private clearFormFeedback(): void {
+    this.formMessage = '';
+    this.formMessageTitle = '';
+    this.formError = false;
+  }
+
+  private showSuccessMessage(title: string, message: string): void {
+    this.formMessageTitle = title;
+    this.formMessage = message;
+    this.formError = false;
+  }
+
+  private showErrorMessage(title: string, message: string): void {
+    this.formMessageTitle = title;
+    this.formMessage = message;
+    this.formError = true;
   }
 
   private applyReadState(): void {

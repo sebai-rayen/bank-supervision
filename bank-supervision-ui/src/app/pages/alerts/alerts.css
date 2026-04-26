@@ -706,6 +706,16 @@ body {
   font-weight: 700;
 }
 
+.form-feedback-title {
+  font-size: 15px;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.form-feedback-text {
+  line-height: 1.45;
+}
+
 .form-feedback.error {
   background: rgba(255, 76, 92, 0.14);
   color: #ff9ea7;

@@ -323,11 +323,19 @@
                 </div>
 
                 <div class="form-group">
-                  <label>User / Recipient</label>
-                  <select [(ngModel)]="sendForm.recipient" name="recipient" class="form-control-ui">
-                    <option value="">Select user</option>
-                    <option *ngFor="let u of userOptions" [value]="u">{{ u }}</option>
-                  </select>
+                  <label>Users / Recipients</label>
+                  <div class="form-control-ui" style="height: auto; min-height: 42px; display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 8px; align-items: center; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; background: rgba(0, 0, 0, 0.2);">
+                    <div class="chip" *ngFor="let email of sendForm.recipients" style="background: var(--pro-primary, #3b82f6); color: white; padding: 2px 10px; border-radius: 12px; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                      {{ email }}
+                      <i class="bi bi-x-circle-fill" style="cursor: pointer; font-size: 14px;" (click)="removeRecipient(email)"></i>
+                    </div>
+                    <select
+                      (change)="addRecipientFromSelect($event)"
+                      style="border: none; outline: none; flex-grow: 1; min-width: 180px; background: transparent; color: inherit; font-size: 14px; padding: 4px 0; cursor: pointer;">
+                      <option value="" disabled selected>Select user email</option>
+                      <option *ngFor="let u of availableUserOptions" [value]="u" style="color: black;">{{ u }}</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="form-group">
@@ -375,9 +383,12 @@
               <div
                 class="form-feedback"
                 *ngIf="formMessage"
+                [attr.role]="formError ? 'alert' : 'status'"
+                aria-live="polite"
                 [class.error]="formError"
                 [class.success]="!formError">
-                {{ formMessage }}
+                <div class="form-feedback-title" *ngIf="formMessageTitle">{{ formMessageTitle }}</div>
+                <div class="form-feedback-text">{{ formMessage }}</div>
               </div>
 
               <div class="send-actions">
@@ -386,9 +397,9 @@
                   Reset
                 </button>
 
-                <button class="btn-solid-primary" type="button" (click)="sendAlert()">
+                <button class="btn-solid-primary" type="button" (click)="sendAlert()" [disabled]="isSending">
                   <i class="bi bi-send-fill"></i>
-                  Send Alert
+                  {{ isSending ? 'Sending...' : 'Send Alert' }}
                 </button>
               </div>
             </section>

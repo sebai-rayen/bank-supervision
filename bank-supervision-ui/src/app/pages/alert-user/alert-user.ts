@@ -1,7 +1,9 @@
-import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, PLATFORM_ID, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { AlertsService, type UserAlertDto } from '../../services/alerts.service';
 
 type Severity = 'Warning' | 'Critical';
 
@@ -27,9 +29,13 @@ interface UserAlert {
   templateUrl: './alert-user.html',
   styleUrls: ['./alert-user.css']
 })
-export class AlertUser implements OnInit {
+export class AlertUser implements OnInit, OnDestroy {
+  private static readonly REFRESH_MS = 15000;
   private platformId = inject(PLATFORM_ID);
+  private alertsService = inject(AlertsService);
+  private cdr = inject(ChangeDetectorRef);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private refreshSubscription?: Subscription;
 
   currentUserName = 'Utilisateur';
   currentUserEmail = 'user@bank.com';
@@ -55,21 +61,72 @@ export class AlertUser implements OnInit {
     this.currentUserEmail = currentUser.email || 'user@bank.com';
 
     this.loadAlerts();
+    this.startPolling();
+  }
+
+  ngOnDestroy(): void {
+    this.refreshSubscription?.unsubscribe();
   }
 
   private loadAlerts(): void {
-    this.allAlerts = JSON.parse(localStorage.getItem('userAlerts') || '[]')
-      .sort((a: UserAlert, b: UserAlert) => b.createdAt - a.createdAt);
+    this.alertsService.getMyAlerts().subscribe({
+      next: (alerts: UserAlertDto[]) => {
+        const readIds = this.readIds;
+        this.allAlerts = alerts
+          .map((item) => ({
+            id: item.id,
+            server: item.server,
+            recipientName: item.recipientName,
+            recipientEmail: item.recipientEmail,
+            type: item.type,
+            severity: item.severity,
+            subject: item.subject,
+            message: item.message,
+            time: item.time,
+            read: readIds.has(item.id),
+            sentBy: item.sentBy,
+            createdAt: item.createdAt ?? 0
+          }))
+          .sort((a: UserAlert, b: UserAlert) => b.createdAt - a.createdAt);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.allAlerts = [];
+        this.cdr.detectChanges();
+      }
+    });
   }
 
-  private persistAlerts(): void {
-    localStorage.setItem('userAlerts', JSON.stringify(this.allAlerts));
+  private startPolling(): void {
+    this.refreshSubscription = this.alertsService.pollMyAlerts(AlertUser.REFRESH_MS).subscribe({
+      next: (alerts: UserAlertDto[]) => {
+        const readIds = this.readIds;
+        this.allAlerts = alerts
+          .map((item) => ({
+            id: item.id,
+            server: item.server,
+            recipientName: item.recipientName,
+            recipientEmail: item.recipientEmail,
+            type: item.type,
+            severity: item.severity,
+            subject: item.subject,
+            message: item.message,
+            time: item.time,
+            read: readIds.has(item.id),
+            sentBy: item.sentBy,
+            createdAt: item.createdAt ?? 0
+          }))
+          .sort((a: UserAlert, b: UserAlert) => b.createdAt - a.createdAt);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // keep showing the current list if background refresh fails
+      }
+    });
   }
 
   get myAlerts(): UserAlert[] {
-    return this.allAlerts.filter(
-      (item) => item.recipientEmail.toLowerCase() === this.currentUserEmail.toLowerCase()
-    );
+    return this.allAlerts;
   }
 
   get filteredAlerts(): UserAlert[] {
@@ -105,23 +162,19 @@ export class AlertUser implements OnInit {
   }
 
   markRead(item: UserAlert): void {
-    const target = this.allAlerts.find((a) => a.id === item.id);
-    if (target) {
-      target.read = true;
-      this.persistAlerts();
-      this.loadAlerts();
-    }
+    const current = this.readIds;
+    current.add(item.id);
+    this.readIds = current;
+    this.allAlerts = this.allAlerts.map((alert) =>
+      alert.id === item.id ? { ...alert, read: true } : alert
+    );
   }
 
   markAllRead(): void {
-    this.allAlerts = this.allAlerts.map((item) =>
-      item.recipientEmail.toLowerCase() === this.currentUserEmail.toLowerCase()
-        ? { ...item, read: true }
-        : item
-    );
-
-    this.persistAlerts();
-    this.loadAlerts();
+    const current = this.readIds;
+    this.allAlerts.forEach((item) => current.add(item.id));
+    this.readIds = current;
+    this.allAlerts = this.allAlerts.map((item) => ({ ...item, read: true }));
   }
 
   exportAlerts(): void {
@@ -158,5 +211,31 @@ export class AlertUser implements OnInit {
     localStorage.removeItem('currentUser');
     sessionStorage.removeItem('currentUser');
     this.router.navigate(['/login']);
+  }
+
+  private get readIdsStorageKey(): string {
+    return `userAlerts.readIds.${this.currentUserEmail.toLowerCase()}`;
+  }
+
+  private get readIds(): Set<number> {
+    if (!this.isBrowser) {
+      return new Set();
+    }
+
+    try {
+      const raw = localStorage.getItem(this.readIdsStorageKey);
+      const parsed = raw ? (JSON.parse(raw) as number[]) : [];
+      return new Set(parsed.filter((value) => typeof value === 'number'));
+    } catch {
+      return new Set();
+    }
+  }
+
+  private set readIds(value: Set<number>) {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    localStorage.setItem(this.readIdsStorageKey, JSON.stringify(Array.from(value)));
   }
 }
